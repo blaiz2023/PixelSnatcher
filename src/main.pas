@@ -6,14 +6,15 @@ interface
 {$ifdef gui} {$define snd} {$endif}
 {$ifdef con3} {$define con2} {$define net} {$define ipsec} {$endif}
 {$ifdef con2} {$define jpeg} {$endif}
+{$ifdef WIN64}{$define 64bit}{$endif}
 {$ifdef fpc} {$mode delphi}{$define laz} {$define d3laz} {$undef d3} {$else} {$define d3} {$define d3laz} {$undef laz} {$endif}
-uses gossroot, {$ifdef gui}gossgui,{$endif} {$ifdef snd}gosssnd,{$endif} gosswin, gossio, gossimg, gossnet;
+uses gossroot, {$ifdef gui}gossgui, gosstext,{$endif} {$ifdef snd}gosssnd,{$endif} gosswin, gosswin2, gossio, gossimg, gossnet, gossfast, gossteps;
 {$B-} {generate short-circuit boolean evaluation code -> stop evaluating logic as soon as value is known}
 //## ==========================================================================================================================================================================================================================
 //##
 //## MIT License
 //##
-//## Copyright 2025 Blaiz Enterprises ( http://www.blaizenterprises.com )
+//## Copyright 2026 Blaiz Enterprises ( http://www.blaizenterprises.com )
 //##
 //## Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
 //## files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -29,28 +30,35 @@ uses gossroot, {$ifdef gui}gossgui,{$endif} {$ifdef snd}gosssnd,{$endif} gosswin
 //##
 //## ==========================================================================================================================================================================================================================
 //## Library.................. app code (main.pas)
-//## Version.................. 1.00.1632 (+15)
+//## Version.................. 1.00.2282 (+30)
 //## Items.................... 2
-//## Last Updated ............ 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
-//## Lines of Code............ 3,300+
+//## Last Updated ............ 15apr2026, 21mar2026, 18mar2026, 15mar2026, 11mar2026, 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
+//## Lines of Code............ 4,500+
+//## Origin .................. Human generated and maintained
 //##
-//## main.pas ................ app code
-//## gossroot.pas ............ console/gui app startup and control
-//## gossio.pas .............. file io
-//## gossimg.pas ............. image/graphics
-//## gossnet.pas ............. network
-//## gosswin.pas ............. 32bit windows api's/xbox controller
-//## gosssnd.pas ............. sound/audio/midi/chimes
-//## gossgui.pas ............. gui management/controls
-//## gossdat.pas ............. app icons (32px and 20px), splash image (208px), help documents (gui only) in txt, bwd or bwp format
-//## gosszip.pas ............. zip support
-//## gossjpg.pas ............. jpeg support
+//## main.pas ................ App specific code
+//## gossdat.pas ............. App specific icons and help documents
+//## gossfast.pas ............ FastDraw - rapid render graphic procs
+//## gossgame.pas ............ GameCore - 2D game engine with integrated menu handler, xbox controller + mouse + keyboard support and window integration
+//## gamefiles.pas ........... Built-in file(s) for GameCore (optional)
+//## gossgui.pas ............. GUI management and controls
+//## gossimg.pas ............. Multi-format graphic procs for 8, 24 and 32 bit images with IO support
+//## gossio.pas .............. File IO and low level file/folder/disk/data format procs
+//## gossjpg.pas ............. JPEG IO (read/write jpeg image data via third party libraries)
+//## gossnet.pas ............. Networking - ip filtering, socket management etc
+//## gossroot.pas ............ App startup and control (GUI, console and service)
+//## gosssnd.pas ............. Sound, audio, midi and midi based chimes
+//## gossteps.pas ............ System, Folder and App images
+//## gosstext.pas ............ TextCore - non-GUI and GUI text engine for text boxes
+//## gosswin.pas ............. Win32 api calls for 32 and 64 bit (static / api references disabled by default)
+//## gosswin2.pas ............ Win32 api calls for 32 and 64 bit (dynamic - load as required with fallback failure handling and default value(s) support)
+//## gosszip.pas ............. ZIP IO (read/write zip data via third party libraries)
 //##
 //## ==========================================================================================================================================================================================================================
 //## | Name                   | Hierarchy         | Version   | Date        | Update history / brief description of function
 //## |------------------------|-------------------|-----------|-------------|--------------------------------------------------------
-//## | tapp                   | tbasicapp         | 1.00.070  | 24oct2025   | App - 01jun2025, 16may2025, 12may2025
-//## | tmonoicon              | tbasiccontrol     | 1.00.1547 | 07nov2025   | Pixel snatcher and tool-icon editor - 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 16may2025, 12may2025, 06may2025
+//## | tapp                   | tbasicapp         | 1.00.152  | 15apr2026   | App - 23mar2026, 12mar2026, 24oct2025, 01jun2025, 18mar2026, 16may2025, 12may2025
+//## | tmonoicon              | tbasiccontrol     | 1.00.2100 | 15apr2026   | Pixel snatcher and tool-icon editor - 23mar2026, 18mar2026, 12mar2026, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 16may2025, 12may2025, 06may2025
 //## ==========================================================================================================================================================================================================================
 //## Performance Note:
 //##
@@ -73,8 +81,8 @@ const
    ilcolor    =3;
    ilcolor2   =4;//dual color mode
    ilfont     =5;
-   ilrgba     =6;
-   ilrgba2    =7;//24may2025
+   ilgrey     =6;//12mar2026
+   ilrgb      =7;
    ilmax      =7;
 
    //file formats
@@ -98,34 +106,41 @@ type
     iclipdownxy,iclipmovexy:tpoint;
     itabimg,itabset:tstr8;
     icapturemoveref,icaptureref64,itimer500,itimer100:comp;
-    isource,isource2:trawimage;
+    isource:trawimage;
     igrid,iimage:tbasicimage;
+    irle6:tbasicrle6;
+    irle8:tbasicrle8;
+    irle32:tbasicrle32;
     ichangedid,itabslot,itabcount,icaptureindex2,icaptureindex,imode:longint;
     iscreen:tbasiccontrol;
     itabs,imaintoolbar,icolormodes,isettings,ioptions:tbasictoolbar;
     icolor0,icolor1,icolor2:tbasiccolor;
+
     //.other
-    irotate,iclipactive,izoomlimit,isizelimit,imaskshades,icolors,iquality,ibytesPNG,ibytesGIF,ibytesICO,ibytesTEA,igridsize,ilastopenfilter:longint;
-    iflip,imirror,icanpastetab,iloaded,icancapture,ishowframe,ishowframesm,ifastcapture,ishowchecker,isourcechanged,idatachanged:boolean;
+    irotate,iclipactive,izoomlimit,isizelimit,imaskshades,icolors,ibytesPNG,ibytesGIF,ibytesICO,ibytesTEA,igridsize,ilastopenfilter:longint;
+    imustpaint,ipreinvert,iinvert,irange,idetail,idelalpha,ialpha,idefAlpha,iflip,imirror,icanpastetab,iloaded,icancapture,ishowframe,ishowframesm,ifastcapture,ishowchecker,isourcechanged,idatachanged:boolean;
     icapturemode,icaptureref,isettingsref,ilastopenfile,ilastsavefile:string;
     iflashON:boolean;
-    ipadw,ipadh,iminw,iminh,icapw,icaph,iopac,ifeat,itol,itolCol,iqual,ibrightness,icontrast,ishiftx,ishifty:tsimpleint;
+    ipadw,ipadh,iminw,iminh,icapw,icaph,ialphaPower,ifeat,iscanTol,icolmix,iqual,ibrightness,icontrast,ishiftx,ishifty:tsimpleint;
     icaplist:array[0..(itablimit-1)] of string;
 
     procedure xopenimg;
     function xloadimg(s:tobject;sfilename:string):boolean;
+    procedure xRGBAtoRGB(const d:tobject);//12mar2026
+
     procedure xclearimg;
-    function xmakeimage(d:tobject;xindex:longint;xdemo:boolean):boolean;
-    function xmakeimage2(d:tobject;xindex,dshiftx,dshifty,dtolCol,dtol,dfeather,dopacity,wautopad,hautopad,dquality,dbrightness100,dcontrast100,dw,dh:longint;xdemo:boolean):boolean;
+    procedure xmakenow;//12mar2026
+    function candetail:boolean;
+    function canalpha:boolean;
+    function xmakeimage(const d:tobject;const xindex:longint;const xdemo:boolean):boolean;
     function xmakedata(xindex,xformat:longint;xdata:pobject):boolean;
-    procedure xcopybase64(xindex:longint;dext:string);
-    procedure xcopytea(xindex:longint);
+    procedure xcopybase64(xindex:longint;dformat:string);
     procedure xcopypng(xindex:longint);
+    procedure xcopyarray(const xindex,ftype:longint);
     function popsaveimg(xformat:longint;var xfilename:string;xcommonfolder,xtitle2:string):boolean;
     procedure xsaveas(xindex,xformat:longint);
     procedure xonshowmenuFill1(sender:tobject;xstyle:string;xmenudata:tstr8;var ximagealign:longint;var xmenuname:string);
     function xonshowmenuClick1(sender:tbasiccontrol;xstyle:string;xcode:longint;xcode2:string;xtepcolor:longint):boolean;
-    procedure setquality(x:longint);
     function lcolor(xindex:longint;xdemo:boolean):longint;
     function lcolor2(xindex:longint;xdemo:boolean):longint;
     function llabel(xindex:longint):string;
@@ -148,7 +163,8 @@ type
     function xcapturetime:comp;
 
     //.tab support
-    function xtabfile(xindex:longint;xpng:boolean):string;
+    function xtabfile(const xindex:longint;const xpng:boolean):string;
+    function xtabfile2(const xindex:longint;const xpng:boolean;const xsubname:string):string;
     procedure xloadtab;
     procedure xsavetab;
     procedure xsavetab2(ximage,xsettings:boolean);
@@ -160,6 +176,7 @@ type
     function gettabinfo:string;
     procedure settabinfo(x:string);
     procedure xsynccaps;
+    procedure xsyncRLE;
 
    public
 
@@ -171,28 +188,32 @@ type
     procedure _ontimer(sender:tobject); override;
 
     //information
-    property mode:longint read imode write setmode;
-    property tabslot:longint read itabslot write settabslot;
-    property quality:longint read iquality write setquality;
-    property minw:longint read getminw write setminw;
-    property minh:longint read getminh write setminh;
-    property padw:longint read getpadw write setpadw;
-    property padh:longint read getpadh write setpadh;
-    property showchecker:boolean read ishowchecker write ishowchecker;
-    property fastcapture:boolean read ifastcapture write ifastcapture;
-    property capturing:boolean read getcapturing;
-    property changedid:longint read ichangedid;
-    property tabinfo:string read gettabinfo write settabinfo;
+    property mode:longint                 read imode          write setmode;
+    property tabslot:longint              read itabslot       write settabslot;
+    property minw:longint                 read getminw        write setminw;
+    property minh:longint                 read getminh        write setminh;
+    property padw:longint                 read getpadw        write setpadw;
+    property padh:longint                 read getpadh        write setpadh;
+    property showchecker:boolean          read ishowchecker   write ishowchecker;
+    property fastcapture:boolean          read ifastcapture   write ifastcapture;
+    property capturing:boolean            read getcapturing;
+    property changedid:longint            read ichangedid;
+    property tabinfo:string               read gettabinfo     write settabinfo;
+
     //command
     function cancmd(x:string):boolean;
     procedure cmd(x:string);
+
     //can
     function cansolid:boolean;
     function cancopy:boolean;
     function canpaste:boolean;
+    procedure paste;
+    procedure paste2;
     function cansave:boolean;
     function canresample:boolean;
     function canclear:boolean;
+
     //other
     procedure capture;
     procedure capturestop;
@@ -241,10 +262,26 @@ procedure app__ontimer;
 
 //.support procs
 function app__netmore:tnetmore;//optional - return a custom "tnetmore" object for a custom helper object for each network record -> once assigned to a network record, the object remains active and ".clear()" proc is used to reduce memory/clear state info when record is reset/reused
-function app__findcustomtep(xindex:longint;var xdata:tlistptr):boolean;
+procedure app__customTEP(const xindex:longint);
 function app__syncandsavesettings:boolean;
 
+
+//support procs ----------------------------------------------------------------
 function mis__brightness_contrast32(s:tobject;xbrightness100,xcontrast100,xindex:longint):boolean;//09nov2025
+function mis__invert32(s:tobject):boolean;//11mar2026
+
+procedure img__clip(const d:tobject;const da:twinrect);
+procedure img__makeTransparent(const d:tobject;xTol:longint);
+procedure img__equalise(const d:tobject;xPower255:longint);
+procedure img__effect(const d:tobject;const xindex,xcolorMix255,xalphaPower,xcolor1,xcolor2:longint;const xdetail,xalpha,xdefAlpha:boolean);
+procedure img__autoInvert(const d:tobject);
+procedure img__quality(const d:tobject;xQuality:longint);
+procedure img__crop(const d:tobject);
+
+procedure img__feather(const d:tobject;dfeather:longint);
+procedure img__minWidthHeight(const d:tobject;const xminW,xminH:longint);
+procedure img__move(const d:tobject;xmove,ymove:longint);
+procedure img__pad(const d:tobject;xpad,ypad:longint);
 
 
 implementation
@@ -273,11 +310,15 @@ xname:=strlow(xname);
 //get
 if      (xname='slogan')              then result:=info__app('name')+' by Blaiz Enterprises'
 else if (xname='width')               then result:='1400'
-else if (xname='height')              then result:='880'
+else if (xname='height')              then result:='910'
+
 else if (xname='language')            then result:='english-australia'//for Clyde - 14sep2025
 else if (xname='codepage')            then result:='1252'
-else if (xname='ver')                 then result:='1.00.1632'
-else if (xname='date')                then result:='09nov2025'
+else if (xname='msix.tags')           then result:='-'//for Clyde
+else if (xname='msstore.name')        then result:='PixelSnatcher'//optional - overrides default name for Clyde - 15apr2026
+
+else if (xname='ver')                 then result:='1.00.2282'
+else if (xname='date')                then result:='15apr2026'
 else if (xname='name')                then result:='Pixel Snatcher'
 else if (xname='web.name')            then result:='pixelsnatcher'//used for website name
 else if (xname='des')                 then result:='Snatch screen pixels and convert into translucent tool images in PNG, GIF, ICO and TEA image formats with ease'
@@ -287,23 +328,21 @@ else if (xname='diskname')            then result:=io__extractfilename(io__exena
 else if (xname='service.name')        then result:=info__app('name')
 else if (xname='service.displayname') then result:=info__app('service.name')
 else if (xname='service.description') then result:=info__app('des')
-else if (xname='new.instance')        then result:='1'//1=allow new instance, else=only one instance of app permitted
-else if (xname='screensizelimit%')    then result:='95'//95% of screen area
-else if (xname='realtimehelp')        then result:='0'//1=show realtime help, 0=don't
-else if (xname='hint')                then result:='1'//1=show hints, 0=don't
 
 //.links and values
 else if (xname='linkname')            then result:=info__app('name')+' by Blaiz Enterprises.lnk'
 else if (xname='linkname.vintage')    then result:=info__app('name')+' (Vintage) by Blaiz Enterprises.lnk'
+
 //.author
 else if (xname='author.shortname')    then result:='Blaiz'
 else if (xname='author.name')         then result:='Blaiz Enterprises'
 else if (xname='portal.name')         then result:='Blaiz Enterprises - Portal'
 else if (xname='portal.tep')          then result:=intstr32(tepBE20)
+
 //.software
-else if (xname='software.tep')        then result:=intstr32(low__aorb(tepNext20,tepIcon20,sizeof(program_icon20h)>=2))
 else if (xname='url.software')        then result:='https://www.blaizenterprises.com/'+info__app('web.name')+'.html'
 else if (xname='url.software.zip')    then result:='https://www.blaizenterprises.com/'+info__app('web.name')+'.zip'
+
 //.urls
 else if (xname='url.portal')          then result:='https://www.blaizenterprises.com'
 else if (xname='url.contact')         then result:='https://www.blaizenterprises.com/contact.html'
@@ -314,6 +353,7 @@ else if (xname='url.x')               then result:=info__app('url.twitter')
 else if (xname='url.instagram')       then result:='https://www.instagram.com/blaizenterprises'
 else if (xname='url.sourceforge')     then result:='https://sourceforge.net/u/blaiz2023/profile/'
 else if (xname='url.github')          then result:='https://github.com/blaiz2023'
+
 //.program/splash
 else if (xname='license')             then result:='MIT License'
 else if (xname='copyright')           then result:='© 1997-'+low__yearstr(2025)+' Blaiz Enterprises'
@@ -326,8 +366,6 @@ else
 
 except;end;
 end;
-
-
 
 
 //app procs --------------------------------------------------------------------
@@ -367,33 +405,30 @@ freeobj(@iapp);
 except;end;
 end;
 
-function app__findcustomtep(xindex:longint;var xdata:tlistptr):boolean;
+procedure app__customTEP(const xindex:longint);
 
-  procedure m(const x:array of byte);//map array to pointer record
-  begin
-  {$ifdef gui}
-  xdata:=low__maplist(x);
-  {$else}
-  xdata.count:=0;
-  xdata.bytes:=nil;
-  {$endif}
-  end;
-begin//Provide the program with a set of optional custom "tep" images, supports images in the TEA format (binary text image)
-//defaults
-result:=false;
+   procedure mc(const sm ,sc:array of byte);//mono + color
+   begin
 
-//sample custom image support
+   tep__20( xindex ,sm ,sc ,it_rle8 ,it_img32 );
 
-//m(tep_none);
-{
+   end;
+
+   procedure m(const sm:array of byte);//mono only
+   begin
+
+   tep__20( xindex ,sm ,[0] ,it_rle8 ,it_img32 );
+
+   end;
+
+begin
+
+//examples:
 case xindex of
-5000:m(tep_write32);
-5001:m(tep_search32);
-end;
-}
+tepCustomBASE20 + 0 :mc( mtep_copy20 ,tep_copy20 );
+tepCustomBASE20 + 1 :m( mtep_copy20              );
+end;//case
 
-//successful
-//result:=(xdata.count>=1);
 end;
 
 function app__syncandsavesettings:boolean;
@@ -468,15 +503,985 @@ except;end;
 end;
 
 
+//support procs ----------------------------------------------------------------
+
+procedure img__clip(const d:tobject;const da:twinrect);
+var
+   s:tobject;
+   sw,sh,dw,dh:longint;
+begin
+
+//default
+s           :=nil;
+
+//check
+if not misok32(d,sw,sh)  then exit;
+if not area__valid( da ) then exit;
+
+//clip area
+dw          :=da.right  - da.left;
+dh          :=da.bottom - da.top ;
+
+if (dw<=1) and (dh<=1) then exit;
+
+//d -> s
+s           :=misimg32( sw ,sh );
+miscopy(d,s);
+
+//s -> d
+missize(d ,dw ,dh );
+mis__copyfast(maxarea,area__make(da.left,da.top,da.right-1,da.bottom-1),0,0,dw,dh,s,d);
+
+//free
+freeobj(@s);
+
+end;
+
+procedure img__makeTransparent(const d:tobject;xTol:longint);
+var
+   sr32:pcolorrow32;
+   s32:pcolor32;
+   t32:tcolor32;
+   r1,r2,g1,g2,b1,b2,sx,sy,sw,sh:longint;
+   xuseAlpha:boolean;
+
+begin
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+//init
+xuseAlpha   :=mask__hasTransparency32( d );
+xTol        :=frcrange32(xTol-1,-1,255);
+
+if (xTol<=-1) then exit;
+
+t32         :=mispixel32( d ,0 ,0 );
+r1          :=t32.r - xTol;
+r2          :=t32.r + xTol;
+g1          :=t32.g - xTol;
+g2          :=t32.g + xTol;
+b1          :=t32.b - xTol;
+b2          :=t32.b + xTol;
+
+//get
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+case xuseAlpha of
+true:begin
+
+   if (s32.a<=xTol) then s32.a:=0;
+
+   end;
+else begin
+
+   if (s32.r>=r1) and (s32.r<=r2) and
+      (s32.g>=g1) and (s32.g<=g2) and
+      (s32.b>=b1) and (s32.b<=b2) then
+      begin
+
+      s32.a :=0;
+
+      end;
+
+   end;
+end;//case
+
+end;//sx
+
+end;//sy
+
+end;
+
+procedure img__equalise(const d:tobject;xPower255:longint);
+var
+   sr32:pcolorrow32;
+   s32:pcolor32;
+   v,lsize,asize,lmin,lmax,amin,amax,sx,sy,sw,sh:longint;
+   lratio,aratio:double;
+   xonce:boolean;
+
+   function lscale(x:longint):longint;
+   begin
+
+   dec(x,lmin);
+
+   if (x<=0) then x:=0;
+
+   result:=round32(x*lratio);
+
+   if      (result<0)   then result:=0
+   else if (result>255) then result:=255;
+
+   end;
+
+   function ascale(x:longint):longint;
+   begin
+
+   dec(x,amin);
+
+   if (x<0) then x:=0;
+
+   result:=round32(x*aratio);
+
+   if      (result<0)   then result:=0
+   else if (result>255) then result:=255;
+
+   end;
+
+begin
+
+
+//check
+if (xpower255<=0)       then exit;
+if not misok32(d,sw,sh) then exit;
+
+
+//init
+lmin        :=255;
+lmax        :=0;
+amin        :=255;
+amax        :=0;
+xonce       :=false;
+xPower255   :=frcrange32(xPower255,0,255);
+
+
+//scan for min-max lum
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a>=1) then
+   begin
+
+   //lum
+   v        :=s32.r;
+   if (s32.g>v) then v:=s32.g;
+   if (s32.b>v) then v:=s32.b;
+
+   if (v<lmin)  then lmin:=v;
+   if (v>lmax)  then lmax:=v;
+
+   //a.lum
+   v        :=s32.a;
+
+   if (v<amin) then amin:=v;
+   if (v>amax) then amax:=v;
+
+   //once
+   xonce    :=true;
+
+   end;
+
+end;//sx
+
+end;//sy
+
+
+//check
+if not xonce then exit;
+
+
+//range
+lsize       :=frcrange32(lmax-lmin+1,1,255);
+asize       :=frcrange32(amax-amin+1,1,255);
+lratio      :=255/lsize;
+aratio      :=255/asize;
+
+
+//stretch lum to fit lmin-lmax
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a<>0) then
+   begin
+
+   //lum
+   if (lratio<255) then
+      begin
+
+      s32.r    :=( (s32.r*(255-xPower255)) + (xpower255*lscale(s32.r)) ) div 255;
+      s32.g    :=( (s32.g*(255-xPower255)) + (xpower255*lscale(s32.g)) ) div 255;
+      s32.b    :=( (s32.b*(255-xPower255)) + (xpower255*lscale(s32.b)) ) div 255;
+
+      end;
+
+   if (aratio<255) then
+      begin
+
+      s32.a    :=( (s32.a*(255-xPower255)) + (xpower255*ascale(s32.a)) ) div 255;//requires the accuracy
+
+      if (s32.a=0) then s32.a:=1;
+
+      end;
+
+   end;
+
+end;//sx
+
+end;//sy
+
+end;
+
+procedure img__effect(const d:tobject;const xindex,xcolorMix255,xalphaPower,xcolor1,xcolor2:longint;const xdetail,xalpha,xdefAlpha:boolean);
+var
+   sr32:pcolorrow32;
+   c1,c2:tcolor32;
+   s32:pcolor32;
+   xgrey,xcolMix,v,v2,sx,sy,sw,sh:longint;
+   ychecker,xchecker:boolean;
+
+   function valphaPower(const v:byte):longint;
+   begin
+
+   result:=(v * xalphaPower) div 100;
+   if      (result<0)   then result:=0
+   else if (result>255) then result:=255;
+
+   end;
+
+   procedure vgrey;
+   begin
+
+   v        :=(  ( c32__lum(s32^)*(255-xgrey) ) + ( ((s32.r+s32.g+s32.b) div 3)*xgrey )  ) shr 8;
+
+   if (v<=0) then v:=1;
+
+   end;
+
+   procedure vwhite;
+   begin
+
+   vgrey;
+
+   case xalpha of
+   true:begin
+
+      s32.r :=255;
+      s32.g :=255;
+      s32.b :=255;
+      s32.a :=valphaPower(v);
+
+      end;
+   else begin
+
+      s32.r :=( (255*v) + (128*(255-v)) ) shr 8;
+      s32.g :=( (255*v) + (128*(255-v)) ) shr 8;
+      s32.b :=( (255*v) + (128*(255-v)) ) shr 8;
+      if xdefAlpha then s32.a :=255;
+
+      end;
+   end;//case
+
+   end;
+
+   procedure vblack;
+   begin
+
+   vgrey;
+
+   case xalpha of
+   true:begin
+
+      s32.r :=0;
+      s32.g :=0;
+      s32.b :=0;
+      s32.a :=valphaPower(v);
+
+      end;
+   else begin
+
+      s32.r :=( (127*(255-v)) + (10*v) ) shr 8;
+      s32.g :=( (127*(255-v)) + (10*v) ) shr 8;
+      s32.b :=( (127*(255-v)) + (10*v) ) shr 8;
+      if xdefAlpha then s32.a :=255;
+
+      end;
+   end;//case
+
+   end;
+
+   procedure vcolor;
+   begin
+
+   vgrey;
+
+   case xalpha of
+   true:begin
+
+      s32.r :=c1.r;
+      s32.g :=c1.g;
+      s32.b :=c1.b;
+      s32.a :=valphaPower(v);
+
+      end;
+   else begin
+
+      s32.r :=( (c1.r*v) + (0*(255-v)) ) shr 8;
+      s32.g :=( (c1.g*v) + (0*(255-v)) ) shr 8;
+      s32.b :=( (c1.b*v) + (0*(255-v)) ) shr 8;
+      if xdefAlpha then s32.a :=255;
+
+      end;
+   end;//case
+
+   end;
+
+begin
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+//init
+xgrey       :=insint(255,xdetail);
+xcolMix     :=frcrange32(xcolorMix255,1,255);
+c1          :=int__c32(xcolor1);
+c2          :=int__c32(xcolor2);
+ychecker    :=false;
+
+//get
+for sy:=0 to pred(sh) do
+begin
+
+ychecker    :=not ychecker;
+xchecker    :=ychecker;
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a<>0) then
+   begin
+
+   case xindex of
+
+   ilWhite:vwhite;
+
+   ilBlack:vblack;
+
+   ilBW:begin
+
+      case xchecker of
+      true:vwhite;
+      else vblack;
+      end;//case
+
+      end;
+
+   ilColor:vcolor;
+
+   ilColor2:begin
+
+      vgrey;
+
+      v2    :=(v*xcolMix) shr 8;
+
+      s32.r :=((( (c1.r*(255-v2)) + (c2.r*v2) ) shr 8)*v) shr 8;
+      s32.g :=((( (c1.g*(255-v2)) + (c2.g*v2) ) shr 8)*v) shr 8;
+      s32.b :=((( (c1.b*(255-v2)) + (c2.b*v2) ) shr 8)*v) shr 8;
+
+      case xalpha of
+      true:s32.a :=valphaPower( v );
+      else if xdefAlpha then s32.a :=255;
+      end;//case
+
+      end;
+
+   ilFont:begin
+
+      vgrey;
+      vcolor;
+
+      end;
+
+   ilGrey:begin
+
+      vgrey;
+
+      s32.r :=v;
+      s32.g :=v;
+      s32.b :=v;
+
+      case xalpha of
+      true:s32.a :=valphaPower( v );
+      else if xdefAlpha then s32.a :=255;
+      end;//case
+
+      end;
+
+   ilRGB:begin
+
+      vgrey;
+
+      case xalpha of
+      true:s32.a :=valphaPower( v );
+      else if xdefAlpha then s32.a:=255;
+      end;//case
+      
+      end;
+
+   end;//case
+
+   end;
+
+//xchecker
+xchecker    :=not xchecker;
+
+end;//sx
+
+end;//sy
+
+end;
+
+procedure img__autoInvert(const d:tobject);
+var
+   sr32:pcolorrow32;
+   s32:pcolor32;
+   vgood,vcount,sx,sy,sw,sh,v:longint;
+   vgood2:double;
+   xonce:boolean;
+
+begin
+
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+
+//init
+xonce       :=false;
+vgood       :=0;
+vcount      :=0;
+
+
+//scan
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a<>0) then
+   begin
+
+   //lum
+   v        :=s32.r;
+   if (s32.g>v) then v:=s32.g;
+   if (s32.b>v) then v:=s32.b;
+
+   if (v>=200)  then inc(vgood);
+
+   inc(vcount);
+
+   //once
+   xonce    :=true;
+
+   end;
+
+end;//sx
+
+end;//sy
+
+
+//get
+vgood2:=(vgood/frcmin32(vcount,1));
+
+
+//check - no visible pixels -> nothing to do -> exit
+if not xonce     then exit;
+
+
+//check - 10% (0.1) or more pixels bright -> this is considered sufficent to work with -> no need to invert image
+if (vgood2>=0.1) then exit;
+
+
+//invert
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a<>0) then
+   begin
+
+   s32.r    :=255-s32.r;
+   s32.g    :=255-s32.g;
+   s32.b    :=255-s32.b;
+
+   end;
+
+end;//sx
+
+end;//sy
+
+end;
+
+procedure img__quality(const d:tobject;xQuality:longint);
+const
+   xdivval  =25;
+   xlimit   =100;
+var
+   sr32:pcolorrow32;
+   s32:pcolor32;
+   sx,sy,sw,sh:longint;
+
+begin
+
+//check
+if (xQuality>=xlimit)   then exit;
+if not misok32(d,sw,sh) then exit;
+
+//init
+xQuality    :=frcrange32(xQuality,1,xlimit);
+
+//get
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(d,sy,sr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx];
+
+if (s32.a<>0) then
+   begin
+
+   s32.r    :=((s32.r*xQuality) + ((s32.r div xdivval)*xdivval*(xlimit-xQuality))) div xlimit;
+   s32.g    :=((s32.g*xQuality) + ((s32.g div xdivval)*xdivval*(xlimit-xQuality))) div xlimit;
+   s32.b    :=((s32.b*xQuality) + ((s32.b div xdivval)*xdivval*(xlimit-xQuality))) div xlimit;
+   s32.a    :=((s32.a*xQuality) + ((s32.a div xdivval)*xdivval*(xlimit-xQuality))) div xlimit;
+
+   if (s32.a<=0) then s32.a:=1;
+
+   end;
+
+end;//sx
+
+end;//sy
+
+end;
+
+procedure img__crop(const d:tobject);
+var
+   s:tobject;
+   sr32:pcolorrow32;
+   x1,x2,y1,y2,sw,sh:longint;
+
+   procedure xscan;
+   var
+      sx,sy:longint;
+      xcolorDetected:boolean;
+   begin
+
+   //scan
+   for sy:=0 to pred(sh) do
+   begin
+
+   if not misscan32(s,sy,sr32) then exit;
+
+   xcolorDetected     :=false;
+
+   for sx:=0 to pred(sw) do
+   begin
+
+   if (sr32[sx].a>=1) then
+      begin
+
+      xcolorDetected  :=true;
+
+      //.x1 - left
+      if (sx<x1) then x1:=sx;
+
+      //.x2 - right
+      if (sx>x2) then x2:=sx;
+
+      end;
+
+   end;//sx
+
+   //.y1 and y2
+   if xcolorDetected then
+      begin
+
+      //.y1 - top
+      if (sy<y1) then y1:=sy;
+
+      //.y2 - bottom
+      if (sy>y2) then y2:=sy;
+
+      end;
+
+   end;//sy
+
+   end;
+
+begin
+
+//defaults
+s           :=nil;
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+//init
+x1          :=max32;
+x2          :=min32;
+y1          :=max32;
+y2          :=min32;
+
+//d -> s
+s           :=misimg32( sw ,sh );
+miscopy(d,s);
+
+//scan
+xscan;
+
+if (x1>=max32) then x1:=0;
+if (x2<=min32) then x2:=sw-1;
+if (y1>=max32) then y1:=0;
+if (y2<=min32) then y2:=sh-1;
+
+//size
+missize( d ,x2-x1+1 ,y2-y1+1 );//always 1x1 or larger
+
+//s -> d
+mis__copyfast(maxarea ,area__make( x1 ,y1 ,x2 ,y2) ,0 ,0 ,x2-x1+1 ,y2-y1+1 ,s ,d);
+
+//free
+freeobj(@s);
+
+end;
+
+procedure img__feather(const d:tobject;dfeather:longint);
+label
+   skipend;
+
+var
+   s:tbasicimage;
+   sr32,dr32:pcolorrows32;
+   d32:pcolor32;
+   dpower255,r,g,b,a,c,sx,sy,sw,sh:longint;
+   mall,dfeatherAll:boolean;
+
+   procedure dcol;
+   var
+      va:longint;
+   begin
+
+   //defaults
+   r        :=0;
+   g        :=0;
+   b        :=0;
+   a        :=0;
+   c        :=0;
+   mall     :=false;
+
+   //check
+   if (sr32[sy][sx].a>=1) then
+      begin
+
+      case dfeatherAll of
+      true:begin
+
+         mall  :=true;
+         va    :=sr32[sy][sx].a;
+         inc( r ,sr32[sy][sx].r*va );
+         inc( g ,sr32[sy][sx].g*va );
+         inc( b ,sr32[sy][sx].b*va );
+         inc( a ,va );
+         inc( c ,1  );
+
+         end;
+      else exit;
+      end;//case
+
+      end;
+
+   //get
+   //.left
+   if (sx>=1) and (sr32[sy][sx-1].a>=1) then
+      begin
+
+      va    :=sr32[sy][sx-1].a;
+      inc( r ,sr32[sy][sx-1].r*va );
+      inc( g ,sr32[sy][sx-1].g*va );
+      inc( b ,sr32[sy][sx-1].b*va );
+      inc( a ,va );
+      inc( c ,1  );
+
+      end;
+
+   //.right
+   if (sx<pred(sw)) and (sr32[sy][sx+1].a>=1) then
+      begin
+
+      va    :=sr32[sy][sx+1].a;
+      inc( r ,sr32[sy][sx+1].r*va );
+      inc( g ,sr32[sy][sx+1].g*va );
+      inc( b ,sr32[sy][sx+1].b*va );
+      inc( a ,va );
+      inc( c ,1  );
+
+      end;
+
+   //.top
+   if (sy>=1) and (sr32[sy-1][sx].a>=1) then
+      begin
+
+      va    :=sr32[sy-1][sx].a;
+      inc( r ,sr32[sy-1][sx].r*va );
+      inc( g ,sr32[sy-1][sx].g*va );
+      inc( b ,sr32[sy-1][sx].b*va );
+      inc( a ,va );
+      inc( c ,1  );
+
+      end;
+
+   //.bottom
+   if (sy<pred(sh)) and (sr32[sy+1][sx].a>=1) then
+      begin
+
+      va    :=sr32[sy+1][sx].a;
+      inc( r ,sr32[sy+1][sx].r*va );
+      inc( g ,sr32[sy+1][sx].g*va );
+      inc( b ,sr32[sy+1][sx].b*va );
+      inc( a ,va );
+      inc( c ,1  );
+
+      end;
+
+   end;
+
+begin
+
+
+//defaults
+s           :=nil;
+c           :=0;
+
+//range
+dfeather    :=frcrange32(dfeather,-255,255);
+dfeatherAll :=(dfeather<=0);
+
+//check
+if (dfeather=0)         then exit;
+if not misok32(d,sw,sh) then exit;
+
+try
+
+//init
+s           :=misimg32(1,1);
+
+if not miscopy(d,s)       then goto skipend;
+
+if not misrows32(s,sr32)  then goto skipend;
+
+if not misrows32(d,dr32)  then goto skipend;
+
+dpower255   :=low__posn(dfeather);
+
+//get
+for sy:=0 to pred(sh) do
+begin
+
+for sx:=0 to pred(sw) do
+begin
+
+dcol;
+
+if (c>=1) then
+   begin
+
+   d32      :=@dr32[sy][sx];
+   r        :=r div a;
+   g        :=g div a;
+   b        :=b div a;
+
+   case mall of
+
+   true:begin
+
+      a        :=a div c;
+      d32.r    :=( ((255-dpower255)*d32.r) + (dpower255*r) ) shr 8;
+      d32.g    :=( ((255-dpower255)*d32.g) + (dpower255*g) ) shr 8;
+      d32.b    :=( ((255-dpower255)*d32.b) + (dpower255*b) ) shr 8;
+      d32.a    :=( ((255-dpower255)*d32.a) + (dpower255*a) ) shr 8;
+
+      end;
+
+   else begin
+
+      a        :=((a*dpower255) div c) shr 8;
+      d32.r    :=r;
+      d32.g    :=g;
+      d32.b    :=b;
+      d32.a    :=a;
+
+      end;
+
+   end;//case
+
+   end;
+
+end;//sx
+
+end;//sy
+
+skipend:
+except;end;
+
+//free
+freeobj(@s);
+
+end;
+
+procedure img__minWidthHeight(const d:tobject;const xminW,xminH:longint);
+var
+   s:tobject;
+   sw,sh,dw,dh:longint;
+begin
+
+//default
+s           :=nil;
+
+//check
+if not misok32(d,sw,sh)  then exit;
+
+//range
+dw          :=frcmin32(sw ,frcmin32(xminW,1) );
+dh          :=frcmin32(sh ,frcmin32(xminH,1) );
+
+if (sw=dw) and (sh=dh) then exit;
+
+
+//d -> s
+s           :=misimg32( sw ,sh );
+miscopy(d,s);
+
+//s -> d
+missize(d ,dw ,dh );
+mis__cls( d ,0 ,0 ,0 ,0 );
+mis__copyfast(maxarea,misarea(s),(dw-sw) div 2,(dh-sh) div 2,sw,sh,s,d);
+
+//free
+freeobj(@s);
+
+end;
+
+procedure img__move(const d:tobject;xmove,ymove:longint);
+var
+   s:tobject;
+   sw,sh:longint;
+begin
+
+//defaults
+s           :=nil;
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+//init
+xmove       :=frcrange32(xmove,-128,128);
+ymove       :=frcrange32(ymove,-128,128);
+
+//check
+if (xmove=0) and (ymove=0) then exit;
+
+//d -> s
+s           :=misimg32( sw ,sh );
+miscopy(d,s);
+
+//cls
+mis__cls( d ,0 ,0 ,0 ,0 );
+
+//s -> d
+mis__copyfast(maxarea ,misarea(s) ,xmove ,ymove ,sw ,sh ,s ,d );
+
+//free
+freeobj(@s);
+
+end;
+
+procedure img__pad(const d:tobject;xpad,ypad:longint);
+var
+   s:tobject;
+   sw,sh:longint;
+begin
+
+//defaults
+s           :=nil;
+
+//check
+if not misok32(d,sw,sh) then exit;
+
+//init
+xpad        :=frcmin32(xpad,0);
+ypad        :=frcmin32(ypad,0);
+
+//check
+if (xpad<=0) and (ypad<=0) then exit;
+
+//d -> s
+s           :=misimg32( sw ,sh );
+miscopy(d,s);
+
+//s -> d
+missize( d ,sw + (2*xpad) , sh + (2*ypad) );
+mis__cls( d ,0 ,0 ,0 ,0 );
+
+mis__copyfast(maxarea,misarea(s),xpad,ypad,sw,sh,s,d);
+
+//free
+freeobj(@s);
+
+end;
+
+
 //## tmicon ####################################################################
+
 //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//1111111111111111111111111
 constructor tmonoicon.create2(xparent:tobject;xscroll,xstart:boolean);
 const
    vsep         =7;
    vlabelratio  =0;
    vcontrolratio=0.4;//.6;
-   scale_tabs=0.92;
-   scale_opts=0.73;
+   scale_tabs=0.80;
+   scale_mode=0.93;
+   scale_opts=0.92;
    scale_vpad=0;
 var
    s,sx,sy,sw,sh,p:longint;
@@ -506,14 +1511,6 @@ var
    xfirst:=false;
    end;
 
-   function xint(xcap,xhelp:string;xmin,xmax,xdef,xval:longint):tbasicint;
-   begin
-   result:=icurrentsubcol.nint(xcap,xhelp,xmin,xmax,xdef,xval);
-   result.oflatback:=true;
-   if not xfirst then result.osepv:=round(vcontrolratio*vsep);
-   xfirst:=false;
-   end;
-
    function sint(xcap,xhelp:string;xmin,xmax,xdef,xval:longint):tsimpleint;
    begin
    result:=icurrentsubcol.mint(xcap,xhelp,xmin,xmax,xdef,xval);
@@ -532,18 +1529,22 @@ var
    function xhelpval(const x:string):string;
    begin
 
-   if      (x='micon.copy.tea')      then result:='Copy Image|Copy image to Clipboard as a Pascal array in 32 bit TEA format. Image data can be directly included into any Gossamer app source code.'
-   else if (x='micon.copy.b64.png')  then result:='Copy Image|Copy image to Clipboard as base64 encoded text in mime/type format PNG. Image data can be inserted into HTML code, or viewed by pasting it into your browser''s address bar.'
-   else if (x='micon.copy.b64.gif')  then result:='Copy Image|Copy image to Clipboard as base64 encoded text in mime/type format GIF. Image data can be inserted into HTML code, or viewed by pasting it into your browser''s address bar.'+xhelpval('gif.restriction')
-   else if (x='micon.capture')       then result:='Capture image from screen|Hold down this button and drag to capture screen in realtime without delay, alternatively, click this button and hover '+'your cursor at the capture location, holding it still for capture to automatically complete after a short delay'
-   else if (x='gif.restriction')     then result:='|*|'+'Format Restriction|The GIF image format can only store 2 mask values (on and off) and 256 colors. An image with subtle mask values, or 2 or more, or more than 256 colors may appear incorrectly.'
-   else if (x='micon.copy.png')      then result:='Copy|Copy image to Clipboard'
-   else if (x='micon.paste')         then result:='Paste|Paste image from Clipboard'
-
+   if      (x='micon.copy.array.tea')  then result:='Copy Image|Copy image to Clipboard as a Pascal array in 32 bit TEA format. Image data can be directly included into any Gossamer app source code.'
+   else if (x='micon.copy.array.png')  then result:='Copy Image|Copy image to Clipboard as a Pascal array in PNG format.'
+   else if (x='micon.copy.array.gif')  then result:='Copy Image|Copy image to Clipboard as a Pascal array in GIF format.'
+   else if (x='micon.copy.array.ico')  then result:='Copy Image|Copy image to Clipboard as a Pascal array in ICO format.'
+   else if (x='micon.copy.b64.png')    then result:='Copy Image|Copy image to Clipboard as base64 encoded text in mime/type format PNG. Image data can be inserted into HTML code, or viewed by pasting it into your browser''s address bar.'
+   else if (x='micon.copy.b64.ico')    then result:='Copy Image|Copy image to Clipboard as base64 encoded text in mime/type format ICO. Image data can be inserted into HTML code, or viewed by pasting it into your browser''s address bar.'
+   else if (x='micon.copy.b64.gif')    then result:='Copy Image|Copy image to Clipboard as base64 encoded text in mime/type format GIF. Image data can be inserted into HTML code, or viewed by pasting it into your browser''s address bar.'+xhelpval('gif.restriction')
+   else if (x='micon.capture')         then result:='Capture image from screen|Hold down this button and drag to capture screen in realtime without delay, alternatively, click this button and hover '+'your cursor at the capture location, holding it still for capture to automatically complete after a short delay'
+   else if (x='gif.restriction')       then result:='|*|'+'Format Restriction|The GIF image format can only store 2 mask values (on and off) and 256 colors. An image with subtle mask values, or 2 or more, or more than 256 colors may appear incorrectly.'
+   else if (x='micon.copy.png')        then result:='Copy|Copy image to Clipboard'
+   else if (x='micon.paste')           then result:='Paste|Paste image from Clipboard'
+   else if (x='micon.paste2')          then result:='Paste 2|Paste, convert and copy image to Clipboard as a Pascal array in PNG format'
    else
       begin
       result:='';
-      showbasic('Undefined help.val');
+      //showbasic('Undefined help.val');
       end;
 
    end;
@@ -554,6 +1555,7 @@ inherited create2(xparent,xscroll,false);
 
 //var
 iloaded          :=false;
+imustpaint       :=false;
 bordersize       :=0;
 oautoheight      :=true;
 itimer500        :=0;
@@ -563,7 +1565,7 @@ ilastopenfilter  :=0;
 ilastsavefile    :='';
 iflashON         :=false;
 izoomlimit       :=15;
-isizelimit       :=128;
+isizelimit       :=256;//was: 128 - 15apr2026
 igridsize        :=2;
 ibytesPNG        :=0;
 ibytesGIF        :=0;
@@ -592,12 +1594,21 @@ iviewarea        :=nilarea;//area of enlarged view
 iclipactive      :=0;
 imirror          :=false;
 iflip            :=false;
+ipreinvert       :=false;
+iinvert          :=false;
+irange           :=false;
+idetail          :=false;
+ialpha           :=false;
+idefAlpha        :=false;
+idelalpha        :=false;
 irotate          :=0;
 
 //images
 isource      :=misraw32(1,1);//resizable
-isource2     :=misraw32(1,1);//resizable
 iimage       :=misimg32(1,1);
+irle6        :=tbasicrle6.create;
+irle8        :=tbasicrle8.create;
+irle32       :=tbasicrle32.create;
 
 //.grid
 c0:=rgba__c32(128,128,128,100);
@@ -655,9 +1666,11 @@ newline;
 
 for p:=0 to (itablimit-1) do
 begin
+
 icaplist[p]:='';
 add('',tepYesBlank20,0,'micon.tabslot.'+intstr32(p),'Work Tab|Customise capture settings and image options per tab|Select to work with this tab');
 newline;
+
 end;//p
 
 end;
@@ -665,16 +1678,22 @@ end;
 
 
 //.image display
-with xnewcol(1,120,false).client do
+//with xnewcol(1,120,false).client do
+with xnewcol(1,120,false) do
+begin
+
+with client do
 begin
 iscreen:=ncontrol;
 iscreen.oautoheight:=true;
 iscreen.bordersize:=10;
 end;
 
+end;
+
 
 //.color modes etc
-with xnewcol(2,25,true).client do
+with xnewcol(2,27,true).client do
 begin
 
 xlabel('Color Mode','');
@@ -687,7 +1706,7 @@ ounderline :=false;
 oflatback  :=true;
 oheadalign:=false;
 halign:=0;
-oscaleh   :=scale_opts;
+oscaleh   :=scale_mode;
 oscalevpad:=scale_vpad;
 
 for p:=0 to ilmax do
@@ -695,41 +1714,8 @@ for p:=0 to ilmax do
    add(llabel(p),tepYesBlank20,0,'micon.mode.'+intstr32(p),'Color Mode|'+lhelp(p));
    newline;
    end;
+
 end;//color modes
-
-xlabel('Options','');
-ioptions:=ntoolbar('');
-
-with ioptions do
-begin
-normal:=true;
-ounderline :=false;
-oflatback  :=true;
-oheadalign:=false;
-halign:=0;
-oscaleh   :=scale_opts;
-oscalevpad:=scale_vpad;
-
-add('Mirror',tepMirror20,0,'micon.mirror','Mirror|Flip image horizontally');
-newline;
-
-add('Flip',tepFlip20,0,'micon.flip','Flip|Flip image vertically');
-newline;
-
-
-add('0',tepRotate20,0,'micon.rotate0','Rotate|No rotate');
-newline;
-
-add('90',tepRotate20,0,'micon.rotate90','Rotate|Rotate image right 90 degrees');
-newline;
-
-add('180',tepRotate20,0,'micon.rotate180','Rotate|Rotate image right 180 degrees');
-newline;
-
-add('270',tepRotate20,0,'micon.rotate270','Rotate|Rotate image right 270 degrees');
-newline;
-
-end;//options
 
 xlabel('Settings','');
 isettings:=ntoolbar('');
@@ -741,7 +1727,7 @@ ounderline :=false;
 oflatback  :=true;
 oheadalign:=false;
 halign:=0;
-oscaleh   :=scale_opts;
+oscaleh   :=scale_mode;
 oscalevpad:=scale_vpad;
 
 add('Fast Capture',tepYesBlank20,0,'micon.fastcapture','Fast Capture|Toggle between standard capture time and fast capture time for delayed capture mode (click and hold cursor to capture)');
@@ -761,30 +1747,39 @@ newline;
 end;
 
 icolor0:=ncolor('Color','');
+
 with icolor0 do
 begin
-opopcolor:=true;
-oshaderange:=false;
-caption:='Color';
-osleek:=true;
+
+opopcolor   :=true;
+oshaderange :=false;
+caption     :='Color';
+osleek      :=false;
+
 end;
 
 icolor1:=ncolor('Color','');
+
 with icolor1 do
 begin
-opopcolor:=true;
-oshaderange:=false;
-caption:='Color 1';
-osleek:=true;
+
+opopcolor   :=true;
+oshaderange :=false;
+caption     :='Color 1';
+osleek      :=false;
+
 end;
 
 icolor2:=ncolor('Color','');
+
 with icolor2 do
 begin
-opopcolor:=true;
-oshaderange:=false;
-caption:='Color 2';
-osleek:=true;
+
+opopcolor   :=true;
+oshaderange :=false;
+caption     :='Color 2';
+osleek      :=false;
+
 end;
 
 end;//column
@@ -814,42 +1809,91 @@ ishifty:=sint('V-Move','V-Move|Move image up or down',-30,30,0,0);
 end;
 
 icurrentsubcol:=icurrentcol;
-xlabel('Color Conversion Settings','');
-itol        :=sint('Scan Tolerance','Scan Tolerance|Adjust scan tolerance to remove background pixels',0,130,30,30);
-iopac       :=sint('Relative Opacity','Relative Opacity|Adjust image opacity (translucence) - low value for translucence pixels, and high value for opaque pixels',20,1500,255,255);//allow it to boast
 
+xlabel('Color Conversion Settings','');
+iscanTol    :=sint('Scan Tolerance','Scan Tolerance|Adjust scan tolerance to remove background pixels',0,255,30,30);
 ibrightness :=sint('Brightness','Brightness|Adjust image brightness',-100,100,0,0);
 icontrast   :=sint('Contrast','Contrast|Adjust image contrast',-100,100,0,0);
+ifeat       :=sint('Feather','Feather|Generate a feather|0 = Off| 1..200 = Feather edge pixels |-200..-1 = Feather all pixels',-200,200,0,0);
+iqual       :=sint('Quality','Quality|Adjust image quality',1,100,100,100);//12mar2026
+icolmix     :=sint('Color Mix','Color Mix|Adjust threshold point at which visible pixels mix from color 1 to color 2',1,255,1,1);
 
-ifeat       :=sint('Feather','Feather|Generate a translucent feather|0 = Off| 1..255 = Feather translucent pixels|-1..-255 = Feather all pixels',-255,255,0,0);
-iqual       :=sint('Quality','Quality|Adjust image quality',1,30,30,30);
-itolCol     :=sint('Color Mix','Color Mix|Adjust threshold point at which visible pixels mix from color 1 to color 2',1,255,1,1);
+ialphaPower :=sint('Alpha Power','',0,500,100,100);//allow it to boost
+
 end;
 
 end;
 
 
 //.main toolbar
+
+with xhigh2 do
+begin
+
+ioptions:=ntitlebar(false,'','');
+
+with ioptions do
+begin
+normal      :=true;
+ounderline  :=false;
+oflatback   :=true;
+oheadalign  :=true;
+oscaleh     :=scale_opts;
+
+add('0',tepRotate20,0,'micon.rotate0','Rotate|No rotate');
+add('90',tepRotate20,0,'micon.rotate90','Rotate|Rotate image right 90 degrees');
+add('180',tepRotate20,0,'micon.rotate180','Rotate|Rotate image right 180 degrees');
+add('270',tepRotate20,0,'micon.rotate270','Rotate|Rotate image right 270 degrees');
+
+addsep;
+
+add('Mirror',tepMirror20,0,'micon.mirror','Mirror|Flip image horizontally');
+add('Flip',tepFlip20,0,'micon.flip','Flip|Flip image vertically');
+
+addsep;
+
+add('Remove Alpha',tepClose20,0,'micon.delalpha','Remove Alpha|Remove alpha channel values from source image before color processing');
+add('Pre-Invert',tepInvert20,0,'micon.preinvert','Pre-Invert|Invert source image colors before color processing');
+add('Enhance Range',tepColor20,0,'micon.range','Enhance Range|Spread source image colors over full color range before color processing');
+add('Boost Detail',tepBW20,0,'micon.detail','Detail Boost|Use average RGB luminosity values during color processing for texture/detail boost');
+add('Make Alpha',tepAsis20,0,'micon.alpha','Make Alpha|Artificially generate alpha values from luminosity levels during color processing');
+add('Def Alpha',tepAsis20,0,'micon.defalpha','Default Alpha|Set final alpha value to 255');
+add('Post-Invert',tepInvert20,0,'micon.invert','Invert|Invert image colors after color processing');
+
+end;//options
+
+end;
+
+
+
+xhigh2.xgrad3;
 imaintoolbar    :=xhigh2.xtoolbar2;
 icaptureindex2  :=gui.rootwin.xhead.add('Capture',tepScreen20,0,'micon.capture',xhelpval('micon.capture'));
 
 with gui.rootwin.xhead do
 begin
 
-add('Copy',tepCopy20,0,'micon.copy.png'     ,xhelpval('micon.copy.png'));
-add('Paste',tepPaste20,0,'micon.paste'      ,xhelpval('micon.paste'));
+add('Copy',tepCopy20,0,'micon.copy.png'       ,xhelpval('micon.copy.png'));
+add('Paste',tepPaste20,0,'micon.paste'        ,xhelpval('micon.paste'));
+add('Paste 2',tepPaste20,0,'micon.paste2'     ,xhelpval('micon.paste2'));
 
 addsep;
-add('TEA',tepCopy20,0,'micon.copy.tea'      ,xhelpval('micon.copy.tea'));
-add('PNG',tepCopy20,0,'micon.copy.b64.png'  ,xhelpval('micon.copy.b64.png'));
-add('GIF',tepCopy20,0,'micon.copy.b64.gif'  ,xhelpval('micon.copy.b64.gif'));
+add('PNG',tepCopy20,0,'micon.copy.array.png'  ,xhelpval('micon.copy.array.png'));
+add('TEA',tepCopy20,0,'micon.copy.array.tea'  ,xhelpval('micon.copy.array.tea'));
+add('ICO',tepCopy20,0,'micon.copy.array.ico'  ,xhelpval('micon.copy.array.ico'));
+add('GIF',tepCopy20,0,'micon.copy.array.gif'  ,xhelpval('micon.copy.array.gif'));
+
 addsep;
+add('PNG',tepCopy20,0,'micon.copy.b64.png'    ,xhelpval('micon.copy.b64.png'));
+add('ICO',tepCopy20,0,'micon.copy.b64.ico'    ,xhelpval('micon.copy.b64.ico'));
+add('GIF',tepCopy20,0,'micon.copy.b64.gif'    ,xhelpval('micon.copy.b64.gif'));
 
 end;
 
 with imaintoolbar do
 begin
 
+normal:=false;
 oheadalign:=true;
 icaptureindex:=add('Capture',tepScreen20,0,'micon.capture',xhelpval('micon.capture'));
 add('Open',tepOpen20,0,'micon.open.img','Open|Open source image from file');
@@ -859,17 +1903,22 @@ add('Copy',tepCopy20,0,'micon.copy.png'     ,xhelpval('micon.copy.png'));
 add('Copy Source',tepCopy20,0,'micon.copy'  ,'Copy|Copy source image to Clipboard');
 add('Paste',tepPaste20,0,'micon.paste'      ,xhelpval('micon.paste'));
 
-
 addsep;
 add('PNG',tepSave20,0,'micon.save.png','Save Image|Save image in PNG format to file');
-add('GIF',tepSave20,0,'micon.save.gif','Save Image|Save image in GIF format to file.'+xhelpval('gif.restriction'));
-add('ICO',tepSave20,0,'micon.save.ico','Save Image|Save image in ICO format to file');
 add('TEA',tepSave20,0,'micon.save.tea','Save Image|Save image in TEA format to file');
-addsep;
+add('ICO',tepSave20,0,'micon.save.ico','Save Image|Save image in ICO format to file');
+add('GIF',tepSave20,0,'micon.save.gif','Save Image|Save image in GIF format to file.'+xhelpval('gif.restriction'));
 
-add('TEA',tepCopy20,0,'micon.copy.tea'      ,xhelpval('micon.copy.tea'));
-add('PNG',tepCopy20,0,'micon.copy.b64.png'  ,xhelpval('micon.copy.b64.png'));
-add('GIF',tepCopy20,0,'micon.copy.b64.gif'  ,xhelpval('micon.copy.b64.gif'));
+addsep;
+add('PNG',tepCopy20,0,'micon.copy.array.png'  ,xhelpval('micon.copy.array.png'));
+add('TEA',tepCopy20,0,'micon.copy.array.tea'  ,xhelpval('micon.copy.array.tea'));
+add('ICO',tepCopy20,0,'micon.copy.array.ico'  ,xhelpval('micon.copy.array.ico'));
+add('GIF',tepCopy20,0,'micon.copy.array.gif'  ,xhelpval('micon.copy.array.gif'));
+
+addsep;
+add('PNG',tepCopy20,0,'micon.copy.b64.png'    ,xhelpval('micon.copy.b64.png'));
+add('ICO',tepCopy20,0,'micon.copy.b64.ico'    ,xhelpval('micon.copy.b64.ico'));
+add('GIF',tepCopy20,0,'micon.copy.b64.gif'    ,xhelpval('micon.copy.b64.gif'));
 
 end;
 
@@ -906,8 +1955,10 @@ xsavetab;
 
 //controls
 freeobj(@isource);
-freeobj(@isource2);
 freeobj(@iimage);
+freeobj(@irle6);
+freeobj(@irle8);
+freeobj(@irle32);
 freeobj(@igrid);
 str__free(@itabimg);
 str__free(@itabset);
@@ -942,7 +1993,7 @@ end;
 procedure tmonoicon.xupdatebuttons;
 var
    p:longint;
-   xcanpaste,xmustalign,bol1,bol2,bol3,bol4:boolean;
+   xcanpaste,xmustalign,bol1,bol2,bol3,bol4,bol5,bol6:boolean;
 begin
 try
 //defaults
@@ -964,23 +2015,52 @@ end;
 
 with ioptions do
 begin
-bmarked2['micon.flip']:=iflip;
-bmarked2['micon.mirror']:=imirror;
 
-bmarked2['micon.rotate0']:=(irotate=0);
-bmarked2['micon.rotate90']:=(irotate=90);
-bmarked2['micon.rotate180']:=(irotate=180);
-bmarked2['micon.rotate270']:=(irotate=270);
+bmarked2['micon.delalpha']   :=idelalpha;
+bflash2['micon.delalpha']    :=idelalpha;
+
+benabled2['micon.alpha']     :=canalpha;
+bmarked2['micon.alpha']      :=ialpha;
+bflash2['micon.alpha']       :=ialpha and canalpha;
+
+benabled2['micon.defalpha']  :=not ialpha;
+bmarked2['micon.defalpha']   :=idefalpha;
+bflash2['micon.defalpha']    :=idefalpha and (not ialpha);
+
+benabled2['micon.detail']    :=candetail;
+bmarked2['micon.detail']     :=idetail;
+bflash2['micon.detail']      :=idetail;
+
+bmarked2['micon.range']      :=irange;
+bflash2['micon.range']       :=irange;
+
+bmarked2['micon.preinvert']  :=ipreinvert;
+bflash2['micon.preinvert']   :=ipreinvert;
+
+bmarked2['micon.invert']     :=iinvert;
+bflash2['micon.invert']      :=iinvert;
+
+bmarked2['micon.flip']       :=iflip;
+bmarked2['micon.mirror']     :=imirror;
+
+bmarked2['micon.rotate0']    :=(irotate=0);
+bmarked2['micon.rotate90']   :=(irotate=90);
+bmarked2['micon.rotate180']  :=(irotate=180);
+bmarked2['micon.rotate270']  :=(irotate=270);
 end;
 
 
 with icolormodes do
 begin
+
 for p:=0 to ilmax do
 begin
+
 bmarked2['micon.mode.'+intstr32(p)]:=(imode=p);
 btep2['micon.mode.'+intstr32(p)]   :=tep__tick(imode=p);
-end;
+
+end;//p
+
 end;
 
 
@@ -1002,20 +2082,23 @@ if (bvisible2['micon.swapcols']<>(mode=ilColor2)) then
 
 end;
 
-
 //.colors
-bol1:=icolor0.visible;
-bol2:=icolor1.visible;
-bol3:=icolor2.visible;
-bol4:=itolCol.visible;
+bol1                  :=icolor0.visible;
+bol2                  :=icolor1.visible;
+bol3                  :=icolor2.visible;
+bol4                  :=icolmix.visible;
+bol5                  :=ialphaPower.visible;
 
-icolor0.visible:=(mode=ilColor);
-icolor1.visible:=(mode=ilColor2);
-icolor2.visible:=(mode=ilColor2);
-itolCol.enabled:=(mode=ilColor2);
-itolCol.visible:=(mode=ilColor2);
+icolor0.visible       :=(mode=ilColor);
+icolor1.visible       :=(mode=ilColor2);
+icolor2.visible       :=(mode=ilColor2);
+icolmix.enabled       :=(mode=ilColor2);
+icolmix.visible       :=(mode=ilColor2);
+ialphaPower.visible   :=ialpha;
 
-if (bol1<>icolor0.visible) or (bol2<>icolor1.visible) or (bol3<>icolor2.visible) or (bol4<>itolCol.visible) then xmustalign:=true;
+
+if (bol1<>icolor0.visible) or (bol2<>icolor1.visible) or (bol3<>icolor2.visible) or (bol4<>icolmix.visible) or
+   (bol5<>ialphaPower.visible)   then xmustalign:=true;
 
 
 with imaintoolbar do
@@ -1050,66 +2133,68 @@ end;
 
 //align
 if xmustalign then gui.fullalignpaint;
-except;end;
-end;
 
-procedure tmonoicon.setquality(x:longint);
-begin
-iquality:=frcrange32(x,0,2);
+except;end;
 end;
 
 procedure tmonoicon.setmode(x:longint);
 begin
+
 imode:=frcrange32(x,0,ilmax);
+
 end;
 
-procedure tmonoicon.xcopybase64(xindex:longint;dext:string);
+procedure tmonoicon.xcopybase64(xindex:longint;dformat:string);
 label
    skipend;
 var
    xresult:boolean;
    a:tbasicimage;
    d:tstr8;
-   dtype,e:string;
+   e:string;
 begin
 
 //defaults
-xresult :=false;
-d       :=nil;
-a       :=nil;
-e       :=gecTaskfailed;
+xresult     :=false;
+d           :=nil;
+a           :=nil;
+e           :=gecTaskfailed;
 
 try
+
 //check
 if not cancopy then exit;
 
-//get
-d:=str__new8;
-if not xmakedata(xindex,fPNG,@d)           then goto skipend;
+//init
+a           :=misimg32(1,1);
+d           :=str__new8;
 
-if strmatch(dext,'gif') then
+//get
+if strmatch(dformat,'gif') then
    begin
 
-   dtype  :='image/gif';
-   a      :=misimg32(1,1);
-   if not mis__fromdata(a,@d,e)            then goto skipend;
-   if not mis__todata(a,@d,'gif',e)        then goto skipend;
+   if not xmakedata(xindex,fGIf,@d)   then goto skipend;
+
+   end
+else if strmatch(dformat,'ico') then
+   begin
+
+   if not xmakedata(xindex,fICO,@d)   then goto skipend;
 
    end
 else
    begin
 
-   dtype:='image/png';
+   dformat:='png';
+   if not xmakedata(xindex,fPNG,@d) then goto skipend;
 
    end;
 
-if not str__tob64(@d,@d,0)                 then goto skipend;
-if not d.sins('data:'+dtype+';base64,',0)  then goto skipend;
-if not clip__copytext(d.text)              then goto skipend;
+if not mis__fromdata(a,@d,e)                        then goto skipend;
+if not clip__copyimageAsBase64(a,dformat,true)      then goto skipend;
 
 //successful
 xresult:=true;
-gui.popstatus(low__mbAUTO2(d.len,1,true)+' of text copied to Clipboard',1);
 skipend:
 except;end;
 
@@ -1163,68 +2248,51 @@ if (not xresult) and (app__gui<>nil) then app__gui.poperror('',e);
 
 end;
 
-procedure tmonoicon.xcopytea(xindex:longint);
+procedure tmonoicon.xcopyarray(const xindex,ftype:longint);
 label
    skipend;
 var
    xresult:boolean;
-   dline,d,d2:tstr8;
-   dlen,p:longint;
+   s,d:tstr8;
    e:string;
 begin
-try
+
 //defaults
-xresult :=false;
-d       :=nil;
-d2      :=nil;
-dline   :=nil;
-e       :=gecTaskfailed;
+xresult     :=false;
+s           :=nil;
+d           :=nil;
+e           :=gecTaskfailed;
+
+try
 
 //check
 if not cancopy then exit;
 
-//get
+//init
+s     :=str__new8;
 d     :=str__new8;
-d2    :=str__new8;
-dline :=str__new8;
-if not xmakedata(xindex,fTEA,@d) then goto skipend;
-dlen  :=str__len(@d);
 
-
-//start
-d2.sadd( ':array[0..'+intstr32(dlen-1)+'] of byte=('+rcode );
-
-//content
-for p:=1 to dlen do
-begin
-str__sadd(@dline,intstr32(byte(d.bytes1[p]))+insstr(',',p<dlen));
-
-if (str__len(@dline)>=990) then
-   begin
-   str__add(@d2,@dline);
-   str__sadd(@d2,rcode);
-   str__clear(@dline);
-   end;
-end;//p
-
-//.finalise
-str__add(@d2,@dline);
-str__sadd(@d2,');'+rcode);
+//get
+if not xmakedata(xindex,ftype,@s) then goto skipend;
 
 //copy
-if not clip__copytext(d2.text) then goto skipend;
+if not str__toarrayBYTE(@s,@d) then goto skipend;
+if not clip__copytext2( @d )   then goto skipend;
 
 //successful
-xresult:=true;
-gui.popstatus(low__mbAUTO2(d2.len,1,true)+' of text copied to Clipboard',1);
+xresult     :=true;
+gui.popstatus(low__mbAUTO2(str__len32(@d),1,true)+' of text copied to Clipboard',1);
+
 skipend:
 except;end;
+
 //free
+str__free(@s);
 str__free(@d);
-str__free(@d2);
-str__free(@dline);
+
 //show error
 if (not xresult) and (app__gui<>nil) then app__gui.poperror('',e);
+
 end;
 
 procedure tmonoicon.settabslot(x:longint);
@@ -1240,14 +2308,19 @@ function tmonoicon.xsettingschanged(xreset:boolean):boolean;
 var
    x:string;
 begin
-x:=bolstr(imirror)+bolstr(iflip)+'|'+insstr( intstr32(icliparea.left)+'_'+intstr32(icliparea.top)+'_'+intstr32(icliparea.right)+'_'+intstr32(icliparea.bottom), iclipactive<=0)+'|'+intstr32(irotate)+'|'+intstr32(icolor0.color)+'|'+intstr32(icolor1.color)+'|'+intstr32(icolor2.color)+'|'+intstr32(lcolor2(mode,true))+'|'+intstr32(lcolor(mode,true))+'|'+intstr32(iqual.val)+'|'+intstr32(itolCol.val)+'|'+intstr32(itol.val)+'|'+intstr32(ibrightness.val)+'|'+intstr32(icontrast.val)+'|'+intstr32(ifeat.val)+'|'+intstr32(iopac.val)+'|'+intstr32(iquality)+'|'+intstr32(imode)+'|'+intstr32(ipadw.val)+'|'+intstr32(ipadh.val)+'|'+intstr32(iminw.val)+'|'+intstr32(iminh.val)+'|'+intstr32(ishiftx.val)+'|'+intstr32(ishifty.val);
-result:=(x<>isettingsref);
+
+x           :=bolstr(imirror)+bolstr(idelalpha)+bolstr(ialpha)+bolstr(idefalpha)+bolstr(idetail)+bolstr(irange)+bolstr(ipreinvert)+bolstr(iinvert)+bolstr(iflip)+'|'+insstr( intstr32(icliparea.left)+'_'+intstr32(icliparea.top)+'_'+intstr32(icliparea.right)+'_'+intstr32(icliparea.bottom), iclipactive<=0)+'|'+intstr32(irotate)+'|'+intstr32(icolor0.color)+'|'+intstr32(icolor1.color)+'|'+intstr32(icolor2.color)+'|'+intstr32(lcolor2(mode,true))+'|'+intstr32(lcolor(mode,true))+'|'+intstr32(iqual.val)+'|'+intstr32(icolmix.val)+'|'+intstr32(iscanTol.val)+'|'+intstr32(ibrightness.val)+'|'+intstr32(icontrast.val)+'|'+intstr32(ifeat.val)+'|'+intstr32(ialphaPower.val)+'|'+intstr32(imode)+'|'+intstr32(ipadw.val)+'|'+intstr32(ipadh.val)+'|'+intstr32(iminw.val)+'|'+intstr32(iminh.val)+'|'+intstr32(ishiftx.val)+'|'+intstr32(ishifty.val);
+result      :=(x<>isettingsref);
+
 if result and xreset then isettingsref:=x;
+
 end;
 
 procedure tmonoicon.xsavetab;
 begin
+
 xsavetab2(true,true);
+
 end;
 
 procedure tmonoicon.xsavetab2(ximage,xsettings:boolean);
@@ -1259,6 +2332,7 @@ begin
 v:=nil;
 
 try
+
 //image
 if ximage then mis__tofile(isource,xtabfile(itabslot,true),'png',e);
 
@@ -1278,9 +2352,9 @@ if xsettings then
    v.i['padh']      :=ipadh.val;
    v.i['capw']      :=icapw.val;
    v.i['caph']      :=icaph.val;
-   v.i['tol']       :=itol.val;
-   v.i['tolcol']    :=itolcol.val;
-   v.i['opacity']   :=iopac.val;
+   v.i['tol']       :=iscanTol.val;
+   v.i['tolcol']    :=icolmix.val;
+   v.i['alphapower']:=ialphaPower.val;
 
    v.i['brightness']:=ibrightness.val;
    v.i['contrast']  :=icontrast.val;
@@ -1296,6 +2370,13 @@ if xsettings then
    v.i['color2']    :=icolor2.color;
    v.b['mirror']    :=imirror;
    v.b['flip']      :=iflip;
+   v.b['preinvert'] :=ipreinvert;
+   v.b['invert']    :=iinvert;
+   v.b['detail']    :=idetail;
+   v.b['delalpha']  :=idelalpha;
+   v.b['alpha']     :=ialpha;
+   v.b['defalpha']  :=idefalpha;
+   v.b['range']     :=irange;
    v.i['rotate']    :=irotate;
    v.i['clip.l']    :=icliparea.left;
    v.i['clip.t']    :=icliparea.top;
@@ -1307,6 +2388,7 @@ if xsettings then
 
    //reset ref
    xsettingschanged(true);
+
    end;
 
 except;end;
@@ -1314,9 +2396,18 @@ except;end;
 freeobj(@v);
 end;
 
-function tmonoicon.xtabfile(xindex:longint;xpng:boolean):string;
+function tmonoicon.xtabfile(const xindex:longint;const xpng:boolean):string;
 begin
-result:=app__settingsfile('tab'+intstr32(xindex)+'.'+low__aorbstr('ini','png',xpng));
+
+result:=xtabfile2(xindex,xpng,'');
+
+end;
+
+function tmonoicon.xtabfile2(const xindex:longint;const xpng:boolean;const xsubname:string):string;
+begin
+
+result:=app__settingsfile('tab'+intstr32(xindex)+insstr('-',xsubname<>'')+xsubname+'.'+low__aorbstr('ini','png',xpng));
+
 end;
 
 procedure tmonoicon.xloadtab;
@@ -1335,8 +2426,10 @@ v:=tvars8.create;
 //image
 if not mis__fromfile(isource,xtabfile(itabslot,true),e) then
    begin
+
    missize(isource,32,32);
    mis__cls(isource,0,0,0,0);
+
    end;
 
 //settings
@@ -1351,9 +2444,9 @@ ipadw.val       :=v.idef('padw',ipadw.def);
 ipadh.val       :=v.idef('padh',ipadh.def);
 icapw.val       :=v.idef('capw',icapw.def);
 icaph.val       :=v.idef('caph',icaph.def);
-itol.val        :=v.idef('tol',itol.def);
-itolcol.val     :=v.idef('tolcol',itolcol.def);
-iopac.val       :=v.idef('opacity',iopac.def);
+iscanTol.val    :=v.idef('tol',iscanTol.def);
+icolmix.val     :=v.idef('tolcol',icolmix.def);
+ialphaPower.val :=v.idef('alphapower',ialphaPower.def);
 
 ibrightness.val :=v.idef('brightness',ibrightness.def);
 icontrast.val   :=v.idef('contrast',icontrast.def);
@@ -1370,6 +2463,13 @@ icolor1.color   :=v.idef('color1',rgba0__int(255,128,0));
 icolor2.color   :=v.idef('color2',rgba0__int(0,128,255));
 imirror         :=v.bdef('mirror',false);
 iflip           :=v.bdef('flip',false);
+ipreinvert      :=v.bdef('preinvert',false);
+iinvert         :=v.bdef('invert',false);
+irange          :=v.bdef('range',false);
+idetail         :=v.bdef('detail',false);
+idelalpha       :=v.bdef('delalpha',false);
+ialpha          :=v.bdef('alpha',true);
+idefalpha       :=v.bdef('defalpha',true);
 
 //.rotate 0,90,180 and 270
 int1          :=v.idef('rotate',0);
@@ -1384,15 +2484,28 @@ icliparea.bottom  :=v.idef('clip.b',-1);
 
 //prime image
 xmakeimage(iimage,imode,true);
+xsyncRLE;
 
 //reset ref
 xsettingschanged(true);
 
 //trigger paint
 isourcechanged:=true;
+
 except;end;
+
 //free
 freeobj(@v);
+
+end;
+
+procedure tmonoicon.xsyncRLE;
+begin
+
+irle6.slow__makefromLRGB( iimage );
+irle8.slow__makefromLUM( iimage );
+irle32.rgba__makefrom( iimage );
+
 end;
 
 procedure tmonoicon.xcopytab;
@@ -1409,12 +2522,16 @@ procedure tmonoicon.xpastetab;
 var
    e:string;
 begin
+
 if app__gui.popquery('Replace current work tab contents (image + settings) with internal Clipboard''s?') then
    begin
+
    io__tofile(xtabfile(itabslot,true),@itabimg,e);
    io__tofile(xtabfile(itabslot,false),@itabset,e);
    xloadtab;
+
    end;
+
 end;
 
 function tmonoicon.xlabelfilter(x:string):string;
@@ -1471,7 +2588,7 @@ begin
 
 //init
 x   :=x+';';
-xlen:=low__len(x);
+xlen:=low__len32(x);
 
 //get
 i :=0;
@@ -1553,38 +2670,72 @@ a      :=nil;
 if not misok32(isource,sw,sh) then exit;
 
 try
+
 //init
 a:=misraw32(1,1);
 
 //s -> source
 if misempty(a) and (sfilename<>'') then
    begin
-   if strmatch('**paste**',sfilename) then
+
+   //from Clipboard - 10mar2026
+   if strmatch('**paste**',sfilename) or strmatch('**paste2**',sfilename) then
       begin
-      if not clip__pasteimage(a) then goto skipend;
-      misonecell(a);
-      mis__copy(a,isource);
+
+      if clip__pasteimage(a,true) then
+         begin
+
+         misonecell(a);
+         mis__copy(a,isource);
+         xmakenow;
+
+         if strmatch('**paste2**',sfilename) then clip__copyimageAsBase64(iimage,'png',true);
+
+         end
+      else goto skipend;
+
       end
+
+   //from file
    else if mis__fromfile(a,sfilename,e) then
       begin
+
       misonecell(a);
       mis__copy(a,isource);
+
       end
+
+   //no image
    else missize(a,1,1);
+
    end;
 
 if misempty(a) then
    begin
-   if not misempty(s) then mis__copy(s,isource)
+
+   if not misempty(s) then
+      begin
+
+      mis__copy(s,isource);
+
+      end
    else
       begin
+
       missize(isource,32,32);
       mis__cls(isource,0,0,0,0);
+
       end;
+
    end;
 
 //max size
-if (misw(isource)>isizelimit) or (mish(isource)>isizelimit) then missize(isource,frcmax32(misw(isource),isizelimit),frcmax32(mish(isource),isizelimit));
+if (misw(isource)>isizelimit) or (mish(isource)>isizelimit) then
+   begin
+
+   missize(isource,frcmax32(misw(isource),isizelimit),frcmax32(mish(isource),isizelimit));
+
+   end;
 
 //save "source" to file
 xsavetab2(true,false);
@@ -1594,8 +2745,97 @@ isourcechanged:=true;
 
 skipend:
 except;end;
+
 //free
 freeobj(@a);
+
+end;
+
+procedure tmonoicon.xRGBAtoRGB(const d:tobject);//12mar2026
+var
+   s:tbasicimage;
+   sx,sy,sw,sh:longint;
+   sr32,dr32:pcolorrow32;
+   s32,d32:pcolor32;
+
+   procedure xmakeNonTransparent;
+   const
+      xmin  =4;
+   begin
+
+   if (d32.r<=xmin) then d32.r:=xmin+1;
+   if (d32.g<=xmin) then d32.g:=xmin+1;
+   if (d32.b<=xmin) then d32.b:=xmin+1;
+
+   end;
+
+begin
+
+//defaults
+s           :=nil;
+
+//check
+if not mask__hastransparency32(d) then exit;
+if not misok32(d,sw,sh)           then exit;
+
+//init
+s           :=misimg32(sw,sh);
+
+//d -> s
+miscopy(d,s);
+
+//s - size + cls
+missize(d,sw+2,sh+2);
+mis__cls(d,0,0,0,255);
+
+//s -> d
+for sy:=0 to pred(sh) do
+begin
+
+if not misscan32(s,sy,sr32  ) then exit;
+if not misscan32(d,sy+1,dr32) then exit;
+
+for sx:=0 to pred(sw) do
+begin
+
+s32         :=@sr32[sx+0];
+d32         :=@dr32[sx+1];
+
+case s32.a of
+0:begin
+
+   d32.r    :=0;
+   d32.g    :=0;
+   d32.b    :=0;
+
+   end;
+
+1..254:begin
+
+   d32.r    :=(s32.r*s32.a) shr 8;
+   d32.g    :=(s32.g*s32.a) shr 8;
+   d32.b    :=(s32.b*s32.a) shr 8;
+
+   xmakeNonTransparent;
+
+   end;
+
+255:begin
+
+   d32.r    :=s32.r;
+   d32.g    :=s32.g;
+   d32.b    :=s32.b;
+
+   xmakeNonTransparent;
+
+   end;
+
+end;//case
+
+end;//dx
+
+end;//dy
+
 end;
 
 function tmonoicon.lcolor(xindex:longint;xdemo:boolean):longint;
@@ -1607,8 +2847,8 @@ ilBW      :result:=0;
 ilcolor   :result:=icolor0.color;
 ilcolor2  :result:=icolor1.color;
 ilfont    :result:=low__aorb(0,vinormal.font,xdemo);
-ilrgba    :result:=0;
-ilrgba2   :result:=0;
+ilgrey    :result:=rgba0__int(255,255,255);
+ilrgb     :result:=0;
 else       result:=0;
 end;//case
 end;
@@ -1631,521 +2871,125 @@ ilBW      :result:='B/W';
 ilcolor   :result:='1 Color';
 ilcolor2  :result:='2 Color Mix';
 ilfont    :result:='Font Color';//24oct2025
-ilrgba    :result:='RGBA';
-ilrgba2   :result:='RGBA2';
+ilgrey    :result:='Grey';
+ilrgb     :result:='RGB';
 else       result:='Black';
 end;//case
 end;
 
-function tmonoicon.lhelp(xindex:longint):string;//31oct2025
-const
-   xshadesof ='Convert all visible image pixels into shades of ';
-   xrgba     ='Convert all visible image pixels into RGB shades based on generated average values and Relative Opacity value';
-   xrgba2    ='Convert all visible image pixels into RGB shades based on generated inverted average values and Relative Opacity value';
+function tmonoicon.lhelp(xindex:longint):string;//13mar2026, 31oct2025
 begin
 case xindex of
-ilblack   :result:=xshadesof+'black';
-ilwhite   :result:=xshadesof+'white';
-ilBW      :result:=xshadesof+'black and white';
-ilcolor   :result:=xshadesof+'custom color';
-ilcolor2  :result:=xshadesof+'custom colors 1 and 2. Colors are mixed via pixel luminosity and Color Mix value.';
-ilfont    :result:=xshadesof+'app font color. Use this color mode to generate "TEA" images using a Gossamer app''s font color. Any change to the app''s font color renders automatically in realtime.';//24oct2025
-ilrgba    :result:=xrgba;
-ilrgba2   :result:=xrgba2;
-else       result:=xshadesof+'black';
+ilblack   :result:='Shades of black';
+ilwhite   :result:='Shades of white';
+ilBW      :result:='Shades of black and white';
+ilcolor   :result:='Shades of custom color';
+ilcolor2  :result:='Shades of two custom colors';
+ilfont    :result:='Shades of app font color';
+ilgrey    :result:='Shades of grey';
+ilrgb     :result:='Color';
+else       result:='Shades of black';
 end;//case
 end;
 
-function tmonoicon.xmakeimage(d:tobject;xindex:longint;xdemo:boolean):boolean;
+function tmonoicon.candetail:boolean;
 begin
-result:=xmakeimage2(d,xindex,ishiftx.val,ishifty.val,itolCol.val,itol.val,ifeat.val,iopac.val,ipadw.val,ipadh.val,iqual.val,ibrightness.val,icontrast.val,iminw.val,iminh.val,xdemo);
+
+result:=true;
+
 end;
 
-function tmonoicon.xmakeimage2(d:tobject;xindex,dshiftx,dshifty,dtolCol,dtol,dfeather,dopacity,wautopad,hautopad,dquality,dbrightness100,dcontrast100,dw,dh:longint;xdemo:boolean):boolean;
+function tmonoicon.canalpha:boolean;
+begin
+
+result:=true;
+
+end;
+
+function tmonoicon.xmakeimage(const d:tobject;const xindex:longint;const xdemo:boolean):boolean;
 label
    skipend;
+
 var
-   e:string;
-   ssource:trawimage;//pointer only
-   s:trawimage;
-   m,mf,mf24:tbasicimage;
-   b:tstr8;
-   tr,tg,tb,vmax,int1,int2,v,v1,v2,v3,uw,uh,sx,sy,xshift,yshift,p,p2,p3,sw,sh,dx,dy:longint;
-   s32:array[0..7] of tcolor32;
-   xchecker,bol1,vinv:boolean;
-   vratio:extended;
-   c24:tcolor24;
-   d32,d322,c32:tcolor32;
-   frs8,mrs8:pcolorrows8;
-   frs24:pcolorrows24;
-   srs32,drs32:pcolorrows32;
+   sw,sh,ddw,ddh:longint32;
 
-   function q(x:byte):byte;//quality
-   begin
-   result:=x;
-
-   if (dquality>=2) and (result<>0) and (result<>255) then
-         begin
-         result:=(result div dquality)*dquality;
-         if (result<=0) then result:=1 else if (result>=255) then result:=254;
-         end;
-   end;
-
-   function vave(const x:tcolor32):byte;
-   var
-      vmin,vmax:byte;
-   begin
-   vmin:=x.r;
-   if (x.g<vmin) then vmin:=x.g;
-   if (x.b<vmin) then vmin:=x.b;
-
-   vmax:=x.r;
-   if (x.g>vmax) then vmax:=x.g;
-   if (x.b>vmax) then vmax:=x.b;
-
-
-   if ((vmax-vmin)>=200) then
-      begin
-//      result:=frcrange32( round(255-vmax*(255/frcmin32(vmax-vmin,1)) ) ,0,255);
-      result:=255-vmax;
-      end
-   else
-      begin
-      result:=(x.r+x.g+x.b) div 3;
-      if vinv then result:=255-result;
-      end;
-
-   end;
-
-   function cok32(const x:tcolor32):boolean;//is a color
-   var
-      v:longint;
-   begin
-   result:=false;
-
-   //.r-g
-   v:=x.r-x.g;
-   if (v<0) then v:=-v;
-   if (v>=dtolCol) then
-      begin
-      result:=true;
-      exit;
-      end;
-
-   //.r-b
-   v:=x.r-x.b;
-   if (v<0) then v:=-v;
-   if (v>=dtolCol) then
-      begin
-      result:=true;
-      exit;
-      end;
-
-   //.g-b
-   v:=x.g-x.b;
-   if (v<0) then v:=-v;
-   if (v>=dtolCol) then
-      begin
-      result:=true;
-      exit;
-      end;
-   end;
-
-   function tok32(const x:tcolor32):boolean;//is transparent
-   begin
-   result:=(tr>=0) and (x.r>=(tr-dtol)) and (x.r<=(tr+dtol)) and (x.g>=(tg-dtol)) and (x.g<=(tg+dtol)) and (x.b>=(tb-dtol)) and (x.b<=(tb+dtol));
-   end;
-
-   function sw1:longint;
-   var
-      dx,dy:longint;
-   begin
-   result:=0;
-
-   for dx:=0 to (sw-1) do for dy:=0 to (sh-1) do if (mrs8[dy][dx]>=1) then
-      begin
-      result:=dx;
-      exit;
-      end;
-   end;
-
-   function sw2:longint;
-   var
-      dx,dy:longint;
-   begin
-   result:=0;
-
-   for dx:=(sw-1) downto 0 do for dy:=0 to (sh-1) do if (mrs8[dy][dx]>=1) then
-      begin
-      result:=frcmin32(sw-dx-1,0);
-      exit;
-      end;
-   end;
-
-   function sh1:longint;
-   var
-      dx,dy:longint;
-   begin
-   result:=0;
-
-   for dy:=0 to (sh-1) do for dx:=0 to (sw-1) do if (mrs8[dy][dx]>=1) then
-      begin
-      result:=dy;
-      exit;
-      end;
-   end;
-
-   function sh2:longint;
-   var
-      dx,dy:longint;
-   begin
-   result:=0;
-
-   for dy:=(sh-1) downto 0 do for dx:=0 to (sw-1) do if (mrs8[dy][dx]>=1) then
-      begin
-      result:=frcmin32(sh-dy-1,0);
-      exit;
-      end;
-   end;
-
-   procedure mblur24;
-   var
-      sx,sy:longint;
-      dr,dg,db,dc:longint;
-
-      procedure xadd(x,y:longint);
-      var
-         c32:tcolor32;
-      begin
-      if (x>=0) and (x<sw) and (y>=0) and (y<sh) and (mrs8[y][x]>=1) then
-         begin
-         c32:=srs32[y][x];
-         inc(dr,c32.r);
-         inc(dg,c32.g);
-         inc(db,c32.b);
-         inc(dc,1);
-         end;
-      end;
-   begin
-   if (mf24=nil) then exit;
-
-   for sy:=0 to (sh-1) do
-   begin
-
-   for sx:=0 to (sw-1) do
-   begin
-   //reset
-   dr:=0;
-   dg:=0;
-   db:=0;
-   dc:=0;
-
-   //add
-   xadd(sx-1,sy-1);
-   xadd(sx+0,sy-1);
-   xadd(sx+1,sy-1);
-
-   xadd(sx-1,sy+0);
-   xadd(sx+0,sy+0);
-   xadd(sx+1,sy+0);
-
-   xadd(sx-1,sy+1);
-   xadd(sx+0,sy+1);
-   xadd(sx+1,sy+1);
-
-   //set
-   if (dc>=1) then
-      begin
-      c24.r:=dr div dc;
-      c24.g:=dg div dc;
-      c24.b:=db div dc;
-      frs24[sy][sx]:=c24;
-      end;
-   end;//sx
-
-   end;//sy
-
-   end;
 begin
+
 //defaults
-result :=true;//pass-thru
-m      :=nil;
-mf     :=nil;
-mf24   :=nil;
-b      :=nil;
-tr     :=-1;
-tg     :=-1;
-tb     :=-1;
-vinv   :=false;
-ssource:=isource;
+result      :=true;//pass-thru
 
 //check
-if not misok32(isource,sw,sh)      then exit;
-if not misok32(isource2,int1,int2) then exit;
-if not misok32(d,int1,int2)        then exit;
+if not misok32(isource,sw,sh)        then exit;
+if not misok32(d,ddw,ddh)            then exit;
 
 try
-//clip source
-int1:=icliparea.right-icliparea.left;
-int2:=icliparea.bottom-icliparea.top;
-if (int1>=2) and (int2>=2) then
-   begin
-   missize(isource2,int1,int2);
-   if not mis__copyfast82432(maxarea,0,0,int1,int2,area__make(icliparea.left,icliparea.top,icliparea.right-1,icliparea.bottom-1),isource2,isource) then goto skipend;
-   ssource:=isource2;
-   sw:=misw(isource2);
-   sh:=mish(isource2);
-   end;
 
-//range
-xindex         :=frcrange32(xindex,0,ilmax);
-dw             :=frcmin32(dw,1);
-dh             :=frcmin32(dh,1);
-dtol           :=frcrange32(dtol,0,130);
-dtolCol        :=frcrange32(dtolCol,1,255);//24oct2025
-dfeather       :=frcrange32(dfeather,-255,255);
-dopacity       :=frcrange32(dopacity,20,1500);//allow it to boast
-dquality       :=31-frcrange32(dquality,1,30);//30=best and 1=worst
-dbrightness100 :=frcrange32(dbrightness100,-100,100);
-dcontrast100   :=frcrange32(dcontrast100,-100,100);
-d32            :=int__c32(lcolor(xindex,xdemo));
-d322           :=int__c32(lcolor2(xindex,xdemo));//2nd system color
-s              :=ssource;
+//init
+miscopy( isource ,d );
 
-//s
-if (wautopad>=1) or (hautopad>=1) then
-   begin
-   int1:=insint(1,(wautopad>=1));
-   int2:=insint(1,(hautopad>=1));
-   sw  :=sw+(2*int1);
-   sh  :=sh+(2*int1);
-   s:=misraw32(sw,sh);
-   c32:=mispixel32(ssource,0,0);
-   mis__cls(s,c32.r,c32.g,c32.b,c32.a);
-   if not mis__copyfast82432(maxarea,int1,int2,misw(ssource),mish(ssource),misarea(ssource),s,ssource) then goto skipend;
-   end
-else s:=ssource;
 
-//m
-m:=misimg8(sw,sh);
-mis__cls(m,0,0,0,0);
+//get
 
-if (dfeather<>0) then
-   begin
-   mf:=misimg8(sw,sh);
-   mis__cls(mf,0,0,0,0);
+//.cut image to specified area
+img__clip( d ,icliparea );
 
-   //m24
-   if (xindex=ilrgba) or (xindex=ilrgba2) then
-      begin
-      mf24:=misimg24(sw,sh);
-      mis__cls(mf24,0,0,0,0);
-      if not mis__copyfast82432(maxarea,0,0,sw,sh,misarea(s),mf24,s) then goto skipend;
-      end;
-   end;
+//.delete alpha
+if idelalpha then mask__setval( d ,255 );//make ALL pixels fully visible
 
-if not misrows32(s,srs32)                       then goto skipend;
-if not misrows8(m,mrs8)                         then goto skipend;
-if (mf<>nil) and (not misrows8(mf,frs8))        then goto skipend;
-if (mf24<>nil) and (not misrows24(mf24,frs24))  then goto skipend;
+//.make "top-left" pixel transparent OR use alpha channel if available
+img__makeTransparent( d ,iscanTol.val );
 
-//scan
-vmax:=0;
+//.cut unwanted outermost transparent area (left,right,top,bottom)
+if (iscanTol.val>=2)         then img__crop( d );
 
-for sy:=0 to (sh-1) do for sx:=0 to (sw-1) do
-   begin
-   c32:=srs32[sy][sx];
+//.automatically invert image for best output
+case xindex of
+ilRGB:;
+else img__autoInvert( d );
+end;//case
 
-   if (sy=0) and (sx=0) then
-      begin
-      tr:=c32.r;
-      tg:=c32.g;
-      tb:=c32.b;
-      vinv:=(c32__lum(c32)<100);
-      if (xindex=ilrgba2) then vinv:=not vinv;//24may2025
-      end;
+//.pre-invert
+if ipreinvert then mis__invert32( d );
 
-   if not tok32(c32) then
-      begin
-      v:=255-vave(c32);
-      if (v>vmax) then vmax:=v;
-      end;
-   end;//sy
+//.quality
+//img__quality( d ,iqual.val );
 
-//make
-vratio:=255/frcmin32(vmax,1);
+//.stretch color/alpha luminosity to fill the full 0..255 8bit range
+if irange then img__equalise( d ,255 );
 
-for sy:=0 to (sh-1) do for sx:=0 to (sw-1) do
-   begin
-   c32:=srs32[sy][sx];
+//.apply effect
+img__effect(d ,xindex ,icolmix.val ,ialphaPower.val ,lcolor(xindex,xdemo) ,lcolor2(xindex,xdemo) ,idetail ,ialpha ,idefAlpha );
 
-   if not tok32(c32) then
-      begin
-      //get
-      v:=255-vave(c32);
-      v:=round(v*vratio);
-      if (v<0) then v:=0 else if (v>255) then v:=255;
-      //set
-      mrs8[sy][sx]:=v;
-      if (mf<>nil) then frs8[sy][sx]:=v;
-      end;
+//.manual invert
+if iinvert then mis__invert32( d );
 
-   end;//sy
+//.minWidthHeight
+img__minWidthHeight( d ,iminw.val ,iminh.val );
 
-//calc offsets for centering "s" on "d"
-//.h
-v1    :=sh1;
-v2    :=sh2;
-v3    :=sh-v1-v2;
-uh    :=frcmin32(sh-v1-v2,1);
-dh    :=largest32(dh,uh);
-if (hautopad>=0) then dh:=frcmin32((2*hautopad)+dh,1);
-yshift:=((uh-dh) div 2)+v1;
+//.insert transparent padding left/right and top/bottom
+img__pad( d ,ipadw.val ,ipadh.val );
 
-//.w
-v1    :=sw1;
-v2    :=sw2;
-v3    :=sw-v1-v2;
-uw    :=frcmin32(sw-v1-v2,1);
-dw    :=largest32(dw,uw);
-if (wautopad>=0) then dw:=frcmin32((2*wautopad)+dw,1);
-xshift:=((uw-dw) div 2)+v1;
+//.feather
+img__feather( d ,ifeat.val );
+img__feather( d ,ifeat.val );
+img__feather( d ,ifeat.val );
 
-//feather
-if (mf<>nil)   then misblur82432(mf);
-if (mf24<>nil) then misblur82432(mf24);
+//.shift image left/right and up/down
+img__move( d ,ishiftx.val ,ishifty.val );
 
-//d
-missize(d,dw,dh);
-mis__cls(d,d32.r,d32.g,d32.b,0);
+//.quality
+img__quality( d ,iqual.val );
 
-//d.rows
-if not misrows32(d,drs32) then goto skipend;
-
-//.blur for ilRGBA/ilRGBA2
-if (mf24<>nil) and (dfeather<>0) then mblur24;
-
-//scan
-sy:=yshift-dshifty;
-
-for dy:=0 to (dh-1) do
-begin
-xchecker:=low__iseven(dy);
-
-if (sy>=0) and (sy<sh) then
-   begin
-   sx:=xshift-dshiftx;
-
-   for dx:=0 to (dw-1) do
-   begin
-
-   if (sx>=0) and (sx<sw) then
-      begin
-      //get
-      v:=round((dopacity/255)*mrs8[sy][sx]);
-      if (v<0) then v:=0 else if (v>255) then v:=255;
-
-      if (mf<>nil) then
-         begin
-         if (dfeather>=1) then
-            begin
-            v2:=round((dfeather/255)*(dopacity/255)*frs8[sy][sx]);
-            if (v2<0) then v2:=0 else if (v2>255) then v2:=255;
-            if (v2>v) then v:=v2;
-            end
-         else
-            begin
-            v2:=round((dopacity/255)*frs8[sy][sx]);
-            v:=( (v*(255+dfeather)) + (v2*-dfeather) ) div 256;
-            if (v<0) then v:=0 else if (v>255) then v:=255;
-            end;
-         end;
-
-      //set
-      if (xindex=ilrgba) or (xindex=ilrgba2) then
-         begin
-         //get
-         c32:=srs32[sy][sx];
-         bol1:=tok32(c32);
-
-         //.ilRGBA feather pixel color
-         if (mf24<>nil) and (c32.a>=1) and ( (dfeather<=-1) or (bol1 and (dfeather>=1)) ) then
-            begin
-            c24:=frs24[sy][sx];
-            c32.r:=q(c24.r);
-            c32.g:=q(c24.g);
-            c32.b:=q(c24.b);
-            end
-         //.transparent pixel color
-         else if bol1 then
-            begin
-            c32.r:=0;
-            c32.g:=0;
-            c32.b:=0;
-            end
-         //.visible pixel color
-         else
-            begin
-            c32.r:=q(c32.r);
-            c32.g:=q(c32.g);
-            c32.b:=q(c32.b);
-            end;
-         //.common alpha pixel value
-         c32.a:=q(v);
-
-         //set
-         drs32[dy][dx]:=c32;
-         end
-      else if (xindex=ilBW) then
-         begin
-         if xchecker then
-            begin
-            d322.a:=q(v);
-            drs32[dy][dx]:=d322;
-            end
-         else drs32[dy][dx].a:=q(v);
-         end
-      else if (xindex=ilColor2) then
-         begin
-         //.color detected -> switch to system font color 2 (0,0,1) + alpha value
-         if cok32(srs32[sy][sx]) then
-            begin
-            d322.a       :=q(v);
-            drs32[dy][dx]:=d322;
-            end
-         //.non-color detected -> use default system font color 1 (already applied) -> set alpha value only
-         else drs32[dy][dx].a:=q(v);
-         end
-      //.all other ilModes
-      else drs32[dy][dx].a:=q(v);
-      end;
-
-   //inc
-   inc(sx);
-   xchecker:=not xchecker;
-   end;//dx
-
-   end;
-
-//inc
-inc(sy);
-end;//dy
 
 //finalise
-if (dbrightness100<>0) or (dcontrast100<>0) then mis__brightness_contrast32(d,dbrightness100,dcontrast100,xindex);//31oct2025
 
+mis__brightness_contrast32(d,ibrightness.val,icontrast.val,xindex);//12mar2026, 31oct2025
 if imirror      then mis__mirror82432(d);
 if iflip        then mis__flip82432(d);
 if (irotate<>0) then mis__rotate82432(d,irotate);
 
 skipend:
 except;end;
-//free
-if (s<>isource) and (s<>isource2) then freeobj(@s);
-freeobj(@m);
-freeobj(@mf);
-freeobj(@mf24);
-str__free(@b);
 end;
 
 function tmonoicon.xmakedata(xindex,xformat:longint;xdata:pobject):boolean;
@@ -2175,11 +3019,19 @@ d:=misimg32(1,1);
 if not xmakeimage(d,xindex,false) then goto skipend;
 
 //get - d -> data
-
 case xformat of
 fico:if not ico32__todata(d,xdata)                             then goto skipend;
 ftea:if not tea__todata32(d,false,(xindex=ilfont),0,0,xdata,e) then goto skipend;
-fgif:if not mis__todata(d,xdata,'gif',e)                       then goto skipend;
+fgif:begin
+
+   //GIF expects a simple mask of 0 or 255, all values of 1..254 are treated as solid -> so convert the mask
+   //here into "0=>0" and "1..255=>255" - 18mar2026
+   mask__forcesimple0255( d );
+
+   //make GIF
+   if not mis__todata(d,xdata,'gif',e)                         then goto skipend;
+
+   end;
 else if not mis__todata(d,xdata,'png',e)                       then goto skipend;
 end;//case
 
@@ -2187,23 +3039,25 @@ end;//case
 result:=true;
 skipend:
 except;end;
+
 //clear on error
 if not result then str__clear(xdata);
+
 //free
 freeobj(@d);
 str__uaf(xdata);
+
 end;
 
 procedure tmonoicon._ontimer(sender:tobject);
 var
-   b:tstr8;
    xmustflash,xmustpaint:boolean;
 begin
 try
+
 //defaults
-b:=nil;
-xmustpaint:=false;
-xmustflash:=false;
+xmustpaint  :=false;
+xmustflash  :=false;
 
 //capture
 if (icapturemode<>'') then capture;
@@ -2225,65 +3079,96 @@ if (ms64>=itimer500) then
 //timer100
 if (ms64>=itimer100) or xmustpaint then
    begin
+
    //capture
    if strmatch(icapturemode,'move') and (ms64>icapturemoveref) then capturestop;
 
-   //detect changes
-   if iloaded and (xsettingschanged(true) or isourcechanged) then
-      begin
-      try
-      //reset
-      isourcechanged:=false;
-
-      //save tab
-      xsavetab;
-
-      //init
-      xmakeimage(iimage,imode,true);
-      b:=str__new8;
-
-      //get
-      //.png
-      xmakedata(mode,fPNG,@b);
-      ibytesPNG:=str__len(@b);
-
-      //.gif
-      xmakedata(mode,fGIF,@b);
-      ibytesGIF:=str__len(@b);
-
-      //.ico
-      xmakedata(mode,fICO,@b);
-      ibytesICO:=str__len(@b);
-
-      //.tea
-      xmakedata(mode,fTEA,@b);
-      ibytesTEA:=str__len(@b);
-
-      //.colors
-      icolors      :=miscountcolors(iimage);
-      imaskshades  :=mask__count(iimage);
-
-      except;end;
-
-      //buttons
-      xupdatebuttons;
-
-      //paint
-      xmustpaint:=true;
-      end;
+   //auto-make - 12mar2026
+   xmakenow;
 
    //reset
-   itimer100:=add64(ms64,100);
+   itimer100:=add64( ms64 ,low__aorb(100,10,app__turbook) );
    end;
 
 //paint
+if imustpaint then
+   begin
+
+   xmustpaint:=true;
+   imustpaint:=false;
+
+   end;
+   
 if      xmustpaint then paintnow
 else if xmustflash then iscreen.paintnow;
 
 except;end;
-//free
-if (b<>nil) then freeobj(@b);
 end;
+
+procedure tmonoicon.xmakenow;//12mar2026
+var
+   b:tstr8;
+begin
+
+//detect changes
+if iloaded and (xsettingschanged(true) or isourcechanged) then
+   begin
+
+   try
+
+   //defaults
+   b        :=nil;
+
+   //reset
+   isourcechanged:=false;
+
+   //save tab
+   xsavetab;
+
+   //init
+   xmakeimage(iimage,imode,true);
+   xsyncRLE;
+   b        :=str__new8;
+
+   //get
+   //.png
+   xmakedata(mode,fPNG,@b);
+   ibytesPNG:=str__len32(@b);
+
+   //.gif
+   xmakedata(mode,fGIF,@b);
+   ibytesGIF:=str__len32(@b);
+
+   //.ico
+   xmakedata(mode,fICO,@b);
+   ibytesICO:=str__len32(@b);
+
+   //.tea
+   xmakedata(mode,fTEA,@b);
+   ibytesTEA:=str__len32(@b);
+
+   //.colors
+   icolors      :=miscountcolors(iimage);
+   imaskshades  :=mask__count(iimage);
+
+   except;end;
+
+   //buttons
+   xupdatebuttons;
+
+   //paint
+   imustpaint:=true;
+
+   //turbo
+   app__turbo;
+
+   //free
+   str__free(@b);
+
+   end;
+
+end;
+
 //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//11111111111111111111111111
 procedure tmonoicon.clipcancel;
 begin
@@ -2439,7 +3324,33 @@ end;
 
 function tmonoicon.canpaste:boolean;
 begin
-result:=clip__canpasteimage;
+result:=clip__canpasteimage(true);//18mar2026
+end;
+
+procedure tmonoicon.paste;
+begin
+
+if canpaste then
+   begin
+
+   icliparea          :=nilarea;
+   xloadimg(nil,'**paste**');
+
+   end;
+
+end;
+
+procedure tmonoicon.paste2;
+begin
+
+if canpaste then
+   begin
+
+   icliparea          :=nilarea;
+   xloadimg(nil,'**paste2**');
+
+   end;
+
 end;
 
 function tmonoicon.canresample:boolean;
@@ -2484,6 +3395,7 @@ var
 
    function mv(const s:string):boolean;
    begin
+
    result:=strm(x,s,v,v32);
 
    end;
@@ -2495,19 +3407,20 @@ var
 
 begin
 try
+
 //defaults
-xmustpaint:=false;
-v         :='';
-v32       :=0;
+xmustpaint            :=false;
+v                     :='';
+v32                   :=0;
 
 //check
-if cancmd(x) then x:=strcopy1(x,7,low__len(x)) else exit;
+if cancmd(x) then x:=strcopy1(x,7,low__len32(x)) else exit;
 
 //get
 if m('resample') then
    begin
 
-   xmustpaint:=true;
+   xmustpaint         :=true;
 
    end
 else if m('clear') then
@@ -2520,114 +3433,203 @@ else if m('clear') then
       xsavetab2(true,false);
 
       end;
-      
+
    end
+
 else if m('copytab') then xcopytab
+
 else if m('pastetab') then xpastetab
+
 else if m('labeltab') then xlabeltab
+
 else if m('open.img') then xopenimg
+
 else if m('save.png') then xsaveas(mode,fPNG)
+
 else if m('save.gif') then xsaveas(mode,fGIF)
+
 else if m('save.ico') then xsaveas(mode,fICO)
+
 else if m('save.tea') then xsaveas(mode,fTEA)
 
 else if mv('copy.b64.') then xcopybase64(mode,v)
+
 else if m('copy.png') then xcopypng(mode)
-else if m('copy.tea') then xcopytea(mode)
+
+//copy as array in these formats - 10mar2026
+else if m('copy.array.tea') then xcopyarray(mode,fTEA)
+else if m('copy.array.png') then xcopyarray(mode,fPNG)
+else if m('copy.array.gif') then xcopyarray(mode,fGIF)
+else if m('copy.array.ico') then xcopyarray(mode,fICO)
+
 else if m('copy') then
    begin
+
    if cancopy then clip__copyimage(isource);
+
    end
-   
-else if m('paste') then
+
+else if m('paste')      then paste
+else if m('paste2')  then
    begin
-   icliparea:=nilarea;
-   xloadimg(nil,'**paste**');
+
+   paste;
+   xcopyarray(mode,fPNG);
+
    end
 else if mv('mode.') then
    begin
-   mode:=v32;
+
+   mode               :=v32;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end
 else if mv('tabslot.') then
    begin
-   tabslot:=v32;
+
+   tabslot            :=v32;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end
 else if m('mirror') then
    begin
-   imirror:=not imirror;
+
+   imirror            :=not imirror;
    xupdatebuttons;
+
    end
 else if m('flip') then
    begin
-   iflip:=not iflip;
+
+   iflip              :=not iflip;
    xupdatebuttons;
+
+   end
+else if m('preinvert') then
+   begin
+
+   ipreinvert         :=not ipreinvert;//13mar2026
+   xupdatebuttons;
+
+   end
+else if m('invert') then
+   begin
+
+   iinvert            :=not iinvert;//11mar2026
+   xupdatebuttons;
+
+   end
+else if m('range') then
+   begin
+
+   irange             :=not irange;
+   xupdatebuttons;
+
+   end
+else if m('detail') then
+   begin
+
+   idetail            :=not idetail;
+   xupdatebuttons;
+
+   end
+else if m('alpha') then
+   begin
+
+   ialpha             :=not ialpha;
+   xupdatebuttons;
+
+   end
+else if m('defalpha') then
+   begin
+
+   idefalpha          :=not idefalpha;
+   xupdatebuttons;
+
+   end
+else if m('delalpha') then
+   begin
+
+   idelalpha          :=not idelalpha;
+   xupdatebuttons;
+
    end
 else if m('rotate0') then
    begin
-   irotate:=0;
+
+   irotate            :=0;
    xupdatebuttons;
+
    end
 else if m('rotate90') then
    begin
-   irotate:=90;
+
+   irotate            :=90;
    xupdatebuttons;
+
    end
 else if m('rotate180') then
    begin
-   irotate:=180;
+
+   irotate            :=180;
    xupdatebuttons;
+
    end
 else if m('rotate270') then
    begin
-   irotate:=270;
+
+   irotate            :=270;
    xupdatebuttons;
-   end
-else if m('pngquality') then
-   begin
-   int1:=quality+1;
-   if (int1>2) then int1:=0;
-   quality:=int1;
-   isourcechanged:=true;
+
    end
 else if m('fastcapture') then
    begin
-   ifastcapture:=not ifastcapture;
+
+   ifastcapture       :=not ifastcapture;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end
 else if m('checker') then
    begin
-   ishowchecker:=not ishowchecker;
+
+   ishowchecker       :=not ishowchecker;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end
 else if m('frame') then
    begin
-   ishowframe:=not ishowframe;
+
+   ishowframe         :=not ishowframe;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end
 else if m('framesm') then
    begin
-   ishowframesm:=not ishowframesm;
+
+   ishowframesm       :=not ishowframesm;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint     :=true;
+
    end
 else if m('swapcols') then
    begin
-   int1:=icolor2.color;
-   icolor2.color:=icolor1.color;
-   icolor1.color:=int1;
+
+   int1               :=icolor2.color;
+   icolor2.color      :=icolor1.color;
+   icolor1.color      :=int1;
    xupdatebuttons;
-   xmustpaint:=true;
+   xmustpaint         :=true;
+
    end;
 
 //paint
 if xmustpaint then paintnow;
+
 except;end;
 end;
 
@@ -2789,15 +3791,19 @@ except;end;
 end;
 
 //xxxxxxxxxxxxxxxxxxxxxxxxxxx//1111111111111111111111111
-procedure tmonoicon.xscreen__onpaint(sender:tobject);
+procedure tmonoicon.xscreen__onpaint(sender:tobject);//._onpaint()
 const
    xlinespacing=1.2;
+   vRLE6       =10;
+   vRLE8       =11;
+   vRLE32      =12;
+
 var
    a:tclientinfo;
    xframe,xframesm:boolean;
    denlargedview,ca,da:twinrect;
    ai:tobject;
-   dcolw,dtextrightmostx,vsep,dright,dbottom,aw,ah,int1,int2,v,ox,oy,p,hpad,vpad,dx,dy,dy0:longint;
+   vtmp,dcolw,dtextrightmostx,vsep,dright,dbottom,alargest,aw,ah,int1,int2,v,ox,oy,p,hpad,vpad,dx,dy,dy0:longint;
    xtab,str1:string;
    xtmp:tstr8;
 
@@ -2812,9 +3818,8 @@ var
    if (x<>'') then
       begin
 
-      iscreen.ldtTAB2(clnone,dtab,a.ci,dx,dy,a.font,x,a.fn,a.f,false,false,false,false,a.r);
-
-      dtextrightmostx:=largest32(dtextrightmostx, dx + low__fonttextwidthTAB2(dtab, a.fn, x) );
+      iscreen.ftext(clnone,a.ci,dx,dy,a.font,dtab,x,a.fn,true);
+      dtextrightmostx:=largest32( dtextrightmostx, dx + font__textwidth( dtab, x ,a.fn ) );
 
       end;
 
@@ -2822,13 +3827,13 @@ var
 
    end;
 
-   procedure xdraw(d:tobject;var dx,dy,dwidth:longint;const denlargedview:boolean;xzoomfactor:longint;xcap:string;xbackcolor:longint);//07nov2025
+   procedure xdraw(d:tobject;const xindex:longint;var dx,dy,dwidth:longint;const denlargedview:boolean;xzoomfactor:longint;xcap:string;xbackcolor:longint);//07nov2025
    var
       x1,x2,y1,y2,dbits,ddw,ddh,dw,dh,int1,tx,ty,v:longint;
    begin
 
    //defaults
-   dwidth:=0;
+   dwidth   :=0;
 
    //check
    if not misok82432(d,dbits,dw,dh) then exit;
@@ -2850,34 +3855,41 @@ var
    if denlargedview then iviewarea:=da;
 
    //cls
-   if (xbackcolor<>clnone) then iscreen.ldso2(area__grow(da,1),clnone,clnone,xbackcolor,xbackcolor,clnone,0,'',false);
+   if (xbackcolor<>clnone) then iscreen.ffillarea(area__grow(da,1),xbackcolor,false);
 
    //frame
    if (xframe and (xzoomfactor>1)) or (xframesm and (xzoomfactor<=1)) then
       begin
 
-      int1:=1;
-      v:=int__splice24(0.5,a.font,a.back);
-      iscreen.ldo(area__grow(da,1),v,false);
+      int1  :=1;
+      v     :=int__splice24(0.5,a.font,a.back);
+      iscreen.foutlinearea(area__grow(da,1),v,false);
 
       end
    else int1:=0;
 
-   iscreen.ldbEXCLUDE(true,area__grow(da,int1),false);
+   //iscreen.ldbEXCLUDE(true,area__grow(da,int1),false);
 
    //title
-   if (xcap<>'') then iscreen.ldtTAB2(clnone,tbnone,a.ci,tx,ty,a.font,xcap,a.fn,a.f,false,false,false,false,a.r);
+   if (xcap<>'') then iscreen.ftext(clnone,a.ci,tx,ty,a.font,'',xcap,a.fn,true);
 
    //checkerboard image
    v:=insint(igridsize,iflashON);
-   if (xbackcolor=clnone) then iscreen.ldc32(da,da.left,da.top,ddw,ddh,area__make(0,v,ddw-1,v+ddh-1),igrid,255,false);
+
+   if (xbackcolor=clnone) then iscreen.fdraw3(igrid,area__make(0,v,ddw-1,v+ddh-1),da.left,da.top,ddw,ddh,clnone,255,0,false,false,true);
 
    //user image
-   iscreen.ldc32b(da,da.left,da.top,ddw,ddh,misarea(d),d,255,(not denlargedview) or (iclipactive=0),false);//disable transparency whilst in "clip source" mode - Win98
+   case xindex of
+   vRLE6  :iscreen.fdraw2(irle6 ,da.left,da.top,a.font,a.line,clRed,clLime,255,true);
+   vRLE8  :iscreen.fdraw2(irle8 ,da.left,da.top,a.font,a.line,clRed,clLime,255,true);
+   vRLE32 :iscreen.fdraw (irle32,da.left,da.top,a.font,255,true);
+   else    iscreen.fdraw3(d,misarea(d),da.left,da.top,ddw,ddh,clnone,255,0,false,false,true);
+   end;
 
    //show cliparea during clip task
    if denlargedview and (iclipactive=1) then
       begin
+
       //get
       x1:=(frcrange32(iclipdownxy.x,da.left,da.right+1)-da.left) div xzoomfactor;
       x2:=(frcrange32(iclipmovexy.x,da.left,da.right+1)-da.left) div xzoomfactor;
@@ -2896,9 +3908,10 @@ var
       ca.bottom  :=da.top + icliparea.bottom*xzoomfactor;
 
       //draw -> W/B/W -> visible against all colors
-      iscreen.ldo(ca,clwhite,false);
-      iscreen.ldo(area__grow(ca,1),clblack,false);
-      iscreen.ldo(area__grow(ca,2),clwhite,false);
+      iscreen.foutlinearea(ca,clwhite,false);
+      iscreen.foutlinearea(area__grow(ca,1),clblack,false);
+      iscreen.foutlinearea(area__grow(ca,2),clwhite,false);
+
       end;
 
 
@@ -2908,7 +3921,7 @@ var
    //bottom space
    inc(dy,2*vsep);
 
-   if (xcap<>'') then v:=low__fonttextwidth2(a.fn,xcap) else v:=0;
+   if (xcap<>'') then v:=font__textwidth('',xcap,a.fn) else v:=0;
    da.right:=largest32(da.right,da.left+v);
 
    //drightboundary
@@ -2917,26 +3930,35 @@ var
    end;
 
    function xcolorinfo(xindex:longint;var xlabel:string;var xcolor:longint):boolean;
+
       procedure s(n:string;v:longint);
       begin
+
       xlabel:=n;
       xcolor:=v;
+
       end;
+
    begin
    result:=true;
 
    case xindex of
-   0:s('Checker',clnone);
-   1:s('Window Client',a.back);
-   2:s('Window Head',viTitle.mback);
-   3:s('Black',0);
-   4:s('Grey',rgba0__int(128,128,128));
-   5:s('White',rgba0__int(255,255,255));
-   6:s('Red',rgba0__int(255,0,0));
-   7:s('Yellow',rgba0__int(255,255,0));
-   8:s('Blue',rgba0__int(0,0,255));
-   9:s('Green',rgba0__int(0,255,0));
+
+   0     :s('Checker',clnone);
+   1     :s('Window Client',a.back);
+   2     :s('Window Head',viTitle.mback);
+   3     :s('Black',0);
+   4     :s('Grey',rgba0__int(128,128,128));
+   5     :s('White',rgba0__int(255,255,255));
+   6     :s('Red',rgba0__int(255,0,0));
+   7     :s('Yellow',rgba0__int(255,255,0));
+   8     :s('Blue',rgba0__int(0,0,255));
+   9     :s('Green',rgba0__int(0,255,0));
+   vRLE6 :s('RLE6 (4 ch)',a.back);
+   vRLE8 :s('RLE8 (1 ch)',a.back);
+   vRLE32:s('RLE32',a.back);
    else result:=false;
+
    end;//case
 
    end;
@@ -2958,19 +3980,26 @@ da          :=area__make(ox,oy,ox,oy);
 if (iclipactive>=1) then ai:=isource else ai:=iimage;
 aw          :=misw(ai);
 ah          :=mish(ai);
+alargest    :=frcmin32( largest32(aw,ah) ,1 );
 xframe      :=ishowframe;
 xframesm    :=ishowframesm;
 vsep        :=3*a.zoom;
 
 //cls
-iscreen.lds(a.cs,a.back,false);
+iscreen.ffillArea(a.cs,a.back,false);
 
 //enlarged view
+
 //.dynamic zoom
-v                    :=frcrange32( 450 div frcmin32(largest32(aw,ah),1) ,1,izoomlimit);
+case alargest of
+min32..128:vtmp:=450;
+else       vtmp:=frcmin32( alargest * 2 ,450 );//for larger images (128px +) adapt viewer size - 15apr2026
+end;//case
+
+v                    :=frcrange32( vtmp div alargest ,1 ,izoomlimit );
 
 //.draw enalarged view
-xdraw(ai,dx,dy,int2,true,v,'Enlarged View - '+low__aorbstr(llabel(mode)+' at '+k64(v*100)+'%','Adjust Capture Area',iclipactive>=1),low__aorb(a.back,clnone,ishowchecker));
+xdraw(ai,0,dx,dy,int2,true,v,'Enlarged View - '+low__aorbstr(llabel(mode)+' at '+k64(v*100)+'%','Adjust Capture Area',iclipactive>=1),low__aorb(a.back,clnone,ishowchecker));
 denlargedview        :=da;
 
 
@@ -2986,8 +4015,8 @@ inc(dy,5*a.zoom);
 xtab  :='L70;L70;R80;R100;';
 
 xdrawtext(dx,dy,xtab,'PNG'+#9+'32 bpp'+#9+k64(misw(iimage))+'w x '+k64(mish(iimage))+'h'+#9+k64(ibytesPNG)+' b');
-xdrawtext(dx,dy,xtab,'ICO'+#9+'32 bpp'+#9+k64(misw(iimage))+'w x '+k64(mish(iimage))+'h'+#9+k64(ibytesICO)+' b');
 xdrawtext(dx,dy,xtab,'TEA'+#9+'32 bpp'+#9+k64(misw(iimage))+'w x '+k64(mish(iimage))+'h'+#9+k64(ibytesTEA)+' b');
+xdrawtext(dx,dy,xtab,'ICO'+#9+'32 bpp'+#9+k64(misw(iimage))+'w x '+k64(mish(iimage))+'h'+#9+k64(ibytesICO)+' b');
 xdrawtext(dx,dy,xtab,'GIF'+#9+' 8 bpp'+#9+k64(misw(iimage))+'w x '+k64(mish(iimage))+'h'+#9+k64(ibytesGIF)+' b');
 
 xtab  :='L70;L200;';
@@ -3036,18 +4065,14 @@ else
       end;
 
    //draw image preview
-   xdraw(iimage,dx,dy,int2,false,1,str1,int1);
+   xdraw(iimage,p,dx,dy,int2,false,1,str1,int1);
 
    //track dynamic column width -> text.width and image.width(int2)
-   dcolw:=largest32( dcolw, largest32( low__fonttextwidth2( a.fn, str1), int2 ) );
+   dcolw:=largest32( dcolw, largest32( font__textwidth('',str1,a.fn), int2 ) );
 
    end;
 
 end;//p
-
-
-//corners
-iscreen.xparentcorners;
 
 except;end;
 
@@ -3059,17 +4084,47 @@ end;
 
 //## tapp ######################################################################
 constructor tapp.create;
+var
+xref:comp;
+p:longint;
+v:longint;
 begin
+
+xref:=ms64;
+
+for p:=1 to 99999999 do
+begin
+
+v:=p-888888;
+
+//if (v>255) then v:=255 else if (v<0) then v:=0;//76ms
+//if (v>=256) then v:=255 else if (v<=-1) then v:=0;//76ms
+
+{
+case v of//159ms
+min32..-1 :v:=0;
+256..max32:v:=255;
+end;//case
+{}
+
+end;//p
+
+
+xref:=sub64(ms64,xref);
+
+//showbasic(k64(v)+'>>'+k64(xref)+' ms');
+
+
 if system_debug then dbstatus(38,'Debug 010 - 21may2021_528am');//yyyy
 
 
 //self
-inherited create(strint32(app__info('width')),strint32(app__info('height')),true);
+inherited create(strint32(app__info('width')),strint32(app__info('height')));
+ibuildingcontrol      :=true;
+iloaded               :=false;
+isettingsref          :='';
+icouldcapture         :=false;
 
-ibuildingcontrol   :=true;
-iloaded            :=false;
-isettingsref       :='';
-icouldcapture      :=false;
 
 //need checkers
 need_jpeg;
@@ -3077,80 +4132,94 @@ need_gif;
 need_ico;
 
 //init
-itimer500          :=ms64;
+itimer500             :=ms64;
 
 
 //controls
 with rootwin do
 begin
-static:=true;
+
+static                :=true;
 xhead;
 xgrad;
-xgrad2;
-xstatus2.celltext[0]:=app__info('des');
-xstatus2.cellalign[0]:=0;
+//xgrad3;
+//xstatus2.celltext[0]  :=app__info('des');
+//xstatus2.cellalign[0] :=0;
 
-icore:=tmonoicon.create(client);
+icore                 :=tmonoicon.create(client);
+
 end;//rootwin
 
 
 with rootwin do
 begin
+
 xhead.xaddoptions;
 xhead.xaddhelp;
+
 end;
 
 
 //default page to show
-rootwin.xhead.parentpage:='overview';
+rootwin.xhead.parentpage        :='overview';
 
 //events
-rootwin.xhead.onclick:=__onclick;
-rootwin.xhead.showmenuFill1:=xshowmenuFill1;
-rootwin.xhead.showmenuClick1:=xshowmenuClick1;
-rootwin.xhead.ocanshowmenu:=true;//use toolbar for special menu display - 18dec2021
-rootwin.onaccept:=icore._onaccept;//drag and drop support
+rootwin.xhead.onclick           :=__onclick;
+rootwin.xhead.showmenuFill1     :=xshowmenuFill1;
+rootwin.xhead.showmenuClick1    :=xshowmenuClick1;
+rootwin.xhead.ocanshowmenu      :=true;//use toolbar for special menu display - 18dec2021
+rootwin.onaccept                :=icore._onaccept;//drag and drop support
 
 //start timer event
-ibuildingcontrol:=false;
+ibuildingcontrol                :=false;
 xloadsettings;
 
 //finish
 createfinish;
+
 end;
 
 destructor tapp.destroy;
 begin
 try
+
 //settings
 xautosavesettings;
 
 //self
 inherited destroy;
+
 except;end;
 end;
 
 procedure tapp.xcmd(sender:tobject;xcode:longint;xcode2:string);
 label
    skipend;
+
 var
    e:string;
 
    function m(x:string):boolean;
    begin
+
    result:=strmatch(x,xcode2);
+
    end;
+
 begin//use for testing purposes only - 15mar2020
 try
+
 //defaults
-e:='';
+e           :='';
 
 //init
 if zzok(sender,7455) and (sender is tbasictoolbar) then
    begin
+
    //ours next
    //xcode:=(sender as tbasictoolbar).ocode;
    xcode2:=strlow((sender as tbasictoolbar).ocode2);
+
    end;
 
 //get
@@ -3159,7 +4228,9 @@ if icore.cancmd(xcode2) then icore.cmd(xcode2);
 //successful
 skipend:
 except;end;
+
 if (e<>'') then gui.popstatus(e,2);
+
 end;
 
 
@@ -3255,6 +4326,7 @@ if not iloaded then exit;
 //timer500
 if (ms64>=itimer500) then
    begin
+
    //savesettings
    xautosavesettings;
 
@@ -3380,6 +4452,50 @@ if (xcontrast100<>0) then
 
 //set
 sr32[sx]:=c32;
+
+end;//sx
+
+end;//sy
+
+//successful
+result:=true;
+skipend:
+
+except;end;
+end;
+
+function mis__invert32(s:tobject):boolean;//11mar2026
+label
+   skipend;
+var
+   sw,sh,sx,sy:longint;
+   sr32 :pcolorrow32;
+   s32  :pcolor32;
+
+begin
+
+//defaults
+result :=false;
+
+//check
+if not misok32(s,sw,sh) then exit;
+
+try
+
+//get
+for sy:=0 to (sh-1) do
+begin
+
+if not misscan32(s,sy,sr32) then goto skipend;
+
+for sx:=0 to (sw-1) do
+begin
+
+//get
+s32         :=@sr32[sx];
+s32.r       :=255-s32.r;
+s32.g       :=255-s32.g;
+s32.b       :=255-s32.b;
 
 end;//sx
 

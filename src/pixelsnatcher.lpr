@@ -21,7 +21,10 @@ uses
   gosszip,
   gossjpg,
   gosswin2,
-  gossgame;
+  gossgame,
+  gossfast,
+  gossteps,
+  gosstext;
   { you can add units after this }
 
 
