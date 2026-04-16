@@ -55,7 +55,7 @@ Snatch pixels from your screen and convert into translucent tool images in PNG, 
 * Source code supports both 32bit and 64bit
 * 32bit compilation in Borland Delphi 3 (stable)
 * 32bit compilation in Lazarus 2.2 (stable)
-* 64bit compilation in Lazarus 4.4 (functional/work in progress)
+* 64bit compilation in Lazarus 4.4+ (functional/work in progress)
 
 # Download
 Download <a href="src/pixelsnatcher.exe">pixelsnatcher.exe</a> or from the "<a href="bin/">bin</a>" or "<a href="src/">src</a>" folders above.
