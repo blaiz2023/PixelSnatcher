@@ -28,7 +28,7 @@ Snatch pixels from your screen and convert into translucent tool images in PNG, 
 * Realtime WYSIWYG (What You See Is What You Get) display
 * Options Window - Easily change app color, font, and settings
 * Portable
-* Smart Source Code (Borland Delphi 3 and Lazarus 2.2/4.4)
+* Smart Source Code (Borland Delphi 3 and Lazarus 2.2/4.4/4.6)
 
 # App Changes
 * Cleaner, higher-quality RGBA option
