@@ -58,7 +58,7 @@ Snatch pixels from your screen and convert into translucent tool images in PNG, 
 * 64bit compilation in Lazarus 4.4+ (functional/work in progress)
 
 # Download
-Download <a href="src/pixelsnatcher.exe">pixelsnatcher.exe</a> or from the "<a href="bin/">bin</a>" or "<a href="src/">src</a>" folders above.
+Download <a href="src/pixelsnatcher.exe">pixelsnatcher.exe</a> or from the "<a href="bin/">bin</a>" or "<a href="src/">src</a>" folders above - for Microsoft Windows, and Linux/MacOS via Wine.
 
 # Images
 <img src="images/pixelsnatcher-screenshot2.jpg">
