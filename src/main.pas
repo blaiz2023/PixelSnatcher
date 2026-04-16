@@ -30,10 +30,10 @@ uses gossroot, {$ifdef gui}gossgui, gosstext,{$endif} {$ifdef snd}gosssnd,{$endi
 //##
 //## ==========================================================================================================================================================================================================================
 //## Library.................. app code (main.pas)
-//## Version.................. 1.00.2282 (+30)
+//## Version.................. 1.00.2285 (+30)
 //## Items.................... 2
-//## Last Updated ............ 15apr2026, 21mar2026, 18mar2026, 15mar2026, 11mar2026, 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
-//## Lines of Code............ 4,500+
+//## Last Updated ............ 16apr2026, 21mar2026, 18mar2026, 15mar2026, 11mar2026, 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
+//## Lines of Code............ 4,400+
 //## Origin .................. Human generated and maintained
 //##
 //## main.pas ................ App specific code
@@ -57,8 +57,8 @@ uses gossroot, {$ifdef gui}gossgui, gosstext,{$endif} {$ifdef snd}gosssnd,{$endi
 //## ==========================================================================================================================================================================================================================
 //## | Name                   | Hierarchy         | Version   | Date        | Update history / brief description of function
 //## |------------------------|-------------------|-----------|-------------|--------------------------------------------------------
-//## | tapp                   | tbasicapp         | 1.00.152  | 15apr2026   | App - 23mar2026, 12mar2026, 24oct2025, 01jun2025, 18mar2026, 16may2025, 12may2025
-//## | tmonoicon              | tbasiccontrol     | 1.00.2100 | 15apr2026   | Pixel snatcher and tool-icon editor - 23mar2026, 18mar2026, 12mar2026, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 16may2025, 12may2025, 06may2025
+//## | tapp                   | tbasicapp         | 1.00.153  | 16apr2026   | App - 23mar2026, 12mar2026, 24oct2025, 01jun2025, 18mar2026, 16may2025, 12may2025
+//## | tmonoicon              | tbasiccontrol     | 1.00.2102 | 16apr2026   | Pixel snatcher and tool-icon editor - 23mar2026, 18mar2026, 12mar2026, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 16may2025, 12may2025, 06may2025
 //## ==========================================================================================================================================================================================================================
 //## Performance Note:
 //##
@@ -317,8 +317,8 @@ else if (xname='codepage')            then result:='1252'
 else if (xname='msix.tags')           then result:='-'//for Clyde
 else if (xname='msstore.name')        then result:='PixelSnatcher'//optional - overrides default name for Clyde - 15apr2026
 
-else if (xname='ver')                 then result:='1.00.2282'
-else if (xname='date')                then result:='15apr2026'
+else if (xname='ver')                 then result:='1.00.2285'
+else if (xname='date')                then result:='16apr2026'
 else if (xname='name')                then result:='Pixel Snatcher'
 else if (xname='web.name')            then result:='pixelsnatcher'//used for website name
 else if (xname='des')                 then result:='Snatch screen pixels and convert into translucent tool images in PNG, GIF, ICO and TEA image formats with ease'
@@ -3193,7 +3193,7 @@ begin
 if strmatch(icapturemode,'move') then
    begin
 
-   result:=frcrange32(round( sub64(icapturemoveref,ms64)/frcmin64(0.01*xcapturetime,1) ),0,100);
+   result:=frcrange32(round32( sub64(icapturemoveref,ms64)/frcmin64(round64(0.01*xcapturetime),1) ),0,100);
 
    end
 else result:=0;
@@ -3954,9 +3954,9 @@ var
    7     :s('Yellow',rgba0__int(255,255,0));
    8     :s('Blue',rgba0__int(0,0,255));
    9     :s('Green',rgba0__int(0,255,0));
-   vRLE6 :s('RLE6 (4 ch)',a.back);
-   vRLE8 :s('RLE8 (1 ch)',a.back);
-   vRLE32:s('RLE32',a.back);
+   vRLE6 :s('RLE 6 (4 ch)',a.back);
+   vRLE8 :s('RLE 8 (1 ch)',a.back);
+   vRLE32:s('RLE 32',a.back);
    else result:=false;
 
    end;//case
@@ -4084,35 +4084,7 @@ end;
 
 //## tapp ######################################################################
 constructor tapp.create;
-var
-xref:comp;
-p:longint;
-v:longint;
 begin
-
-xref:=ms64;
-
-for p:=1 to 99999999 do
-begin
-
-v:=p-888888;
-
-//if (v>255) then v:=255 else if (v<0) then v:=0;//76ms
-//if (v>=256) then v:=255 else if (v<=-1) then v:=0;//76ms
-
-{
-case v of//159ms
-min32..-1 :v:=0;
-256..max32:v:=255;
-end;//case
-{}
-
-end;//p
-
-
-xref:=sub64(ms64,xref);
-
-//showbasic(k64(v)+'>>'+k64(xref)+' ms');
 
 
 if system_debug then dbstatus(38,'Debug 010 - 21may2021_528am');//yyyy
