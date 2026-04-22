@@ -30,9 +30,9 @@ uses gossroot, {$ifdef gui}gossgui, gosstext,{$endif} {$ifdef snd}gosssnd,{$endi
 //##
 //## ==========================================================================================================================================================================================================================
 //## Library.................. app code (main.pas)
-//## Version.................. 1.00.2285 (+30)
+//## Version.................. 1.00.2287 (+32)
 //## Items.................... 2
-//## Last Updated ............ 16apr2026, 21mar2026, 18mar2026, 15mar2026, 11mar2026, 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
+//## Last Updated ............ 22apr2026, 16apr2026, 21mar2026, 18mar2026, 15mar2026, 11mar2026, 09nov2025, 07nov2025, 31oct2025, 24oct2025, 05jun2025, 03jun2025, 01jun2025, 24may2025
 //## Lines of Code............ 4,400+
 //## Origin .................. Human generated and maintained
 //##
@@ -317,8 +317,8 @@ else if (xname='codepage')            then result:='1252'
 else if (xname='msix.tags')           then result:='-'//for Clyde
 else if (xname='msstore.name')        then result:='PixelSnatcher'//optional - overrides default name for Clyde - 15apr2026
 
-else if (xname='ver')                 then result:='1.00.2285'
-else if (xname='date')                then result:='16apr2026'
+else if (xname='ver')                 then result:='1.00.2287'
+else if (xname='date')                then result:='22apr2026'
 else if (xname='name')                then result:='Pixel Snatcher'
 else if (xname='web.name')            then result:='pixelsnatcher'//used for website name
 else if (xname='des')                 then result:='Snatch screen pixels and convert into translucent tool images in PNG, GIF, ICO and TEA image formats with ease'
